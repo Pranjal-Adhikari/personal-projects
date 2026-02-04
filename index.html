@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Scanlateanator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header id="topBar">
+    <div class="top-left">
+      <h1>Scanlateanator</h1>
+    </div>
+    <div class="top-center">
+      <div class="tool-group">
+        <button id="undoBtn" class="icon-btn" title="Undo (Ctrl+Z)" disabled>↶</button>
+        <button id="redoBtn" class="icon-btn" title="Redo (Ctrl+Y)" disabled>↷</button>
+      </div>
+      <div class="tool-divider"></div>
+      <div class="tool-group">
+        <button id="brushBtn" class="tool-btn" title="Brush" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+          </svg>
+          Brush
+        </button>
+        <button id="eraserBtn" class="tool-btn" title="Eraser" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 20H7L3 16l10-10 7 7-3 3"/>
+          </svg>
+          Eraser
+        </button>
+        <button id="textBtn" class="tool-btn" title="Text" disabled>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 7 4 4 20 4 20 7"/>
+            <line x1="9" y1="20" x2="15" y2="20"/>
+            <line x1="12" y1="4" x2="12" y2="20"/>
+          </svg>
+          Text
+        </button>
+      </div>
+    </div>
+    <div class="top-right">
+      <input id="fileInput" type="file" accept="image/*" style="display:none" />
+      <button id="uploadBtn" class="primary-btn">Upload Image</button>
+      <div class="export-dropdown">
+        <button id="exportBtn" class="primary-btn" disabled>
+          Export
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:6px;display:inline-block;vertical-align:middle;">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div class="export-dropdown-menu">
+          <button id="exportCurrentBtn" class="export-option">Current Page (.png)</button>
+          <button id="exportAllBtn" class="export-option">All Pages (.zip)</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside id="leftSidebar">
+      <div class="sidebar-section">
+        <h3>Pages</h3>
+        <div id="pageControls">
+          <select id="pageSelect" class="select-input">
+            <option value="0">Page 1</option>
+          </select>
+          <div class="page-buttons">
+            <button id="addPageBtn" class="secondary-btn" title="Add New Page">+ Add Page</button>
+            <button id="deletePageBtn" class="danger-btn" title="Delete Current Page" disabled>Delete</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>History</h3>
+        <div id="historyLog"></div>
+      </div>
+    </aside>
+
+    <!-- CENTER CANVAS AREA -->
+    <div id="centerArea">
+      <div id="emptyState">
+        <h2>Welcome to Scanlateanator</h2>
+        <p>Upload an image to start editing. This site is meant for web-based manga scanlation and comic translation.</p>
+        <button class="primary-btn" onclick="document.getElementById('uploadBtn').click()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:8px">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload Image
+        </button>
+      </div>
+      <div id="canvasWrapper" style="display:none">
+        <canvas id="imageCanvas"></canvas>
+        <canvas id="editCanvas"></canvas>
+        <div id="brushCursor"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR WITH TABS -->
+    <aside id="rightSidebar">
+      <div class="tabs">
+	    <button class="tab-btn active" data-tab="brush">Brush</button>
+        <button class="tab-btn" data-tab="eraser">Eraser</button>
+        <button class="tab-btn" data-tab="text">Text</button>
+        <button class="tab-btn" data-tab="layers">Layers</button>
+      </div>
+	   
+	  <!-- BRUSH TAB -->
+      <div class="tab-content active" id="brushTab">
+        <div class="section">
+          <label class="section-label">Brush Color</label>
+          <input id="brushColorInput" type="color" value="#ffffff" class="color-input-large" />
+        </div>
+
+        <div class="section">
+          <label class="input-label">Brush Size: <span id="brushSizeValue">20</span>px</label>
+          <input id="brushSizeInput" type="range" min="2" max="120" value="20" class="slider" />
+        </div>
+		
+		<div class="section">
+          <p style="color: #999; font-size: 12px; line-height: 1.5;">
+            The brush tool paints over your image with a selected color. Use it to clean up bubbles, clean up scans, or to redraw parts of the image. Adjust the size and color to match your needs.
+          </p>
+        </div>
+      </div>
+
+      <!-- ERASER TAB -->
+      <div class="tab-content" id="eraserTab">
+        <div class="section">
+          <label class="input-label">Eraser Size: <span id="eraserSizeValue">20</span>px</label>
+          <input id="eraserSizeInput" type="range" min="2" max="120" value="20" class="slider" />
+        </div>
+        
+        <div class="section">
+          <p style="color: #999; font-size: 12px; line-height: 1.5;">
+            The eraser removes brush strokes and edits you've made. It does not affect the original image.
+          </p>
+        </div>
+      </div>
+
+
+      <!-- TEXT TAB -->
+      <div class="tab-content" id="textTab">
+        <div class="section">
+          <label class="section-label">Content</label>
+          <textarea id="textInput" rows="4" placeholder="Click text button then canvas..."></textarea>
+        </div>
+
+        <div class="section">
+          <label class="section-label">Font</label>
+          <select id="fontFamilySel" class="select-input">
+            <option>Arial</option>
+            <option>Times New Roman</option>
+            <option>Verdana</option>
+            <option>Comic Sans MS</option>
+            <option>Courier New</option>
+            <option>Georgia</option>
+          </select>
+        </div>
+
+        <div class="section two-col">
+          <div>
+            <label class="input-label">Size</label>
+            <input id="fontSizeInput" type="number" min="8" max="200" value="24" />
+          </div>
+          <div>
+            <label class="input-label">Line Height</label>
+            <input id="lineHeightInput" type="number" min="1" max="3" step="0.1" value="1.2" />
+          </div>
+        </div>
+
+        <div class="section">
+          <label class="section-label">Style</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input id="boldCheck" type="checkbox" />
+              <span>Bold</span>
+            </label>
+            <label class="checkbox-label">
+              <input id="italicCheck" type="checkbox" />
+              <span>Italic</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <label class="section-label">Colors</label>
+          <div class="color-grid">
+            <div class="color-input-group">
+              <label class="input-label">Text</label>
+              <input id="textColorInput" type="color" value="#000000" />
+            </div>
+            <div class="color-input-group">
+              <label class="input-label">Stroke</label>
+              <input id="strokeColorInput" type="color" value="#ffffff" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section two-col">
+          <div>
+            <label class="input-label">Stroke Width</label>
+            <input id="strokeWidthInput" type="number" min="0" max="20" step="0.5" value="0" />
+          </div>
+          <div>
+            <label class="input-label">Rotation</label>
+            <input id="rotateInput" type="number" min="0" max="360" value="0" />
+          </div>
+        </div>
+
+        <div class="section button-row">
+          <button id="duplicateText" class="secondary-btn">Duplicate</button>
+          <button id="deleteTextBtn" class="danger-btn">Delete</button>
+        </div>
+		
+		<div class="section">
+          <p style="color: #999; font-size: 12px; line-height: 1.5;">
+            The text tool lets you add editable text boxes to your image. Click on the "Text" button on the top, then on the canvas to place text, then customize the font, size, colors, and styling. Three features: drag to move, handles to resize, and the top handle is used to rotate.
+          </p>
+        </div>
+      </div>
+	  
+      <!-- LAYERS TAB -->
+      <div class="tab-content" id="layersTab">
+        <div class="section">
+          <label class="checkbox-label layer-toggle">
+            <input id="showTextLayer" type="checkbox" checked />
+            <span>Show Text Layer</span>
+          </label>
+          <label class="checkbox-label layer-toggle">
+            <input id="showEditLayer" type="checkbox" checked />
+            <span>Show Edit Layer</span>
+          </label>
+        </div>
+		<div class="section">
+          <p style="color: #999; font-size: 12px; line-height: 1.5;">
+            Control the visibility of different editing layers. Toggle text boxes and brush edits on or off to preview your work or focus on specific elements while editing.
+          </p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <div style="text-align:center;color:#fff;">
+      <div style="font-size:18px;margin-bottom:12px;">Exporting...</div>
+      <div style="font-size:14px;color:#999;">Processing image and text layers</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
