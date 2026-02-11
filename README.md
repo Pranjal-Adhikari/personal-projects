@@ -6,6 +6,7 @@
 - [Other Project Reserved](#other-project-reserved)
 - [Other Project Reserved 2](#other-project-reserved-2)
 
+\*\*Last Updated: February 10th, 2026\*\*
 ---
 
 ## [Scanlateanator](https://pranjal-adhikari.github.io/personal-projects/scanlatenator/)
