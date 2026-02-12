@@ -9,7 +9,7 @@
 \*\*Last Updated: February 10th, 2026\*\*
 ---
 
-## [Scanlateanator](https://pranjal-adhikari.github.io/personal-projects/scanlatenator/)
+## [Scanlateanator](https://pranjal-adhikari.github.io/personal-projects/scanlateanator/)
 
 A lightweight browser-based manga/comic editing tool built with HTML, CSS, and vanilla JavaScript.
 
