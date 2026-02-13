@@ -139,6 +139,78 @@ body {
     cursor: not-allowed;
 }
 
+/* FLOATING HELP BUTTON */
+.floating-help-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #0e639c;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.floating-help-btn:hover {
+    background: #1177bb;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.floating-help-btn:active {
+    transform: scale(1.05);
+}
+
+.floating-help-btn svg {
+    stroke: currentColor;
+}
+
+/* COLLAPSE BUTTONS */
+.collapse-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 48px;
+    background: #3e3e42;
+    border: 1px solid #555;
+    color: #999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    transition: all 0.3s ease;
+    border-radius: 0;
+}
+
+.collapse-btn:hover {
+    background: #505050;
+    color: #fff;
+}
+
+.collapse-btn svg {
+    transition: transform 0.3s ease;
+}
+
+.collapse-left {
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+}
+
+.collapse-right {
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+}
+
 /* EXPORT DROPDOWN */
 .export-dropdown {
     position: relative;
@@ -199,6 +271,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
+    overflow: hidden;
 }
 
 /* LEFT SIDEBAR */
@@ -207,7 +280,28 @@ body {
     background: #252526;
     border-right: 1px solid #3e3e42;
     overflow-y: auto;
+    overflow-x: visible;
     flex-shrink: 0;
+    position: relative;
+    transition: margin-left 0.3s ease;
+}
+
+#leftSidebar.collapsed {
+    margin-left: -200px;
+}
+
+#leftSidebar .collapse-btn {
+    right: -25px;
+    position: fixed;
+    left: 200px; /* Position relative to left edge */
+}
+
+#leftSidebar.collapsed .collapse-btn {
+    left: 0px; /* Move to edge when collapsed */
+}
+
+#leftSidebar.collapsed .collapse-btn svg {
+    transform: rotate(180deg);
 }
 
 .sidebar-section {
@@ -322,7 +416,6 @@ body {
 #canvasWrapper {
     position: relative;
     display: inline-block;
-    margin: 20px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     vertical-align: top;
 }
@@ -362,6 +455,27 @@ body {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    position: relative;
+    transition: margin-right 0.3s ease;
+}
+
+#rightSidebar.collapsed {
+    margin-right: -300px;
+}
+
+#rightSidebar .collapse-btn {
+    left: -25px;
+    position: fixed;
+    right: 300px; /* Position relative to right edge */
+    left: auto;
+}
+
+#rightSidebar.collapsed .collapse-btn {
+    right: 0px; /* Move to edge when collapsed */
+}
+
+#rightSidebar.collapsed .collapse-btn svg {
+    transform: rotate(180deg);
 }
 
 /* TABS */
@@ -545,6 +659,43 @@ input[type="color"] {
     border-bottom: none;
 }
 
+/* Alignment buttons */
+.alignment-group {
+    display: flex;
+    gap: 4px;
+    background: #3c3c3c;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.alignment-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alignment-btn:hover {
+    background: #505050;
+    color: #fff;
+}
+
+.alignment-btn.active {
+    background: #0e639c;
+    color: #fff;
+}
+
+.alignment-btn svg {
+    stroke: currentColor;
+}
+
 /* TWO COLUMN LAYOUT */
 .two-col {
     display: grid;
@@ -721,6 +872,142 @@ input[type="color"] {
     justify-content: center;
 }
 
+/* HELP MODAL */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 32px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: #3e3e42;
+    color: #fff;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.help-section {
+    margin-bottom: 32px;
+}
+
+.help-section:last-child {
+    margin-bottom: 0;
+}
+
+.help-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0e639c;
+}
+
+.help-section p {
+    color: #ccc;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.help-section ul {
+    color: #ccc;
+    line-height: 1.8;
+    margin-left: 20px;
+    margin-bottom: 12px;
+}
+
+.help-section ul li {
+    margin-bottom: 6px;
+}
+
+.help-item {
+    margin-bottom: 20px;
+}
+
+.help-item:last-child {
+    margin-bottom: 0;
+}
+
+.help-item h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0e639c;
+    margin-bottom: 8px;
+}
+
+.help-item p {
+    margin-bottom: 8px;
+}
+
+.help-item ul {
+    margin-top: 8px;
+}
+
+.help-section strong {
+    color: #fff;
+    font-weight: 600;
+}
+
 /* SCROLLBARS */
 ::-webkit-scrollbar {
     width: 10px;
@@ -740,17 +1027,309 @@ input[type="color"] {
     background: #606060;
 }
 
-/* PERFORMANCE OPTIMIZATION: Use will-change sparingly */
 .textbox.selected,
 #brushCursor {
     will-change: transform;
 }
 
-/* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
     * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===================================
+   OTHER SCREENS
+   =================================== */
+
+/* Tablet and below (1024px) */
+@media (max-width: 1024px) {
+    /* Reduce sidebar widths */
+    #leftSidebar {
+        width: 180px;
+    }
+    
+    #rightSidebar {
+        width: 280px;
+    }
+    
+    #leftSidebar .collapse-btn {
+        left: 180px;
+    }
+    
+    #rightSidebar .collapse-btn {
+        right: 280px;
+    }
+    
+    #topBar {
+        padding: 0 12px;
+    }
+    
+    .top-left h1 {
+        font-size: 16px;
+    }
+    
+    .tool-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Tablet portrait and below (768px) */
+@media (max-width: 768px) {
+
+    #leftSidebar {
+        margin-left: -200px;
+    }
+    
+    #rightSidebar {
+        margin-right: -300px;
+    }
+    
+    /* Show collapsed state */
+    #leftSidebar.collapsed {
+        margin-left: -200px;
+    }
+    
+    #leftSidebar:not(.collapsed) {
+        margin-left: 0;
+        z-index: 1500;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+    
+    #rightSidebar.collapsed {
+        margin-right: -300px;
+    }
+    
+    #rightSidebar:not(.collapsed) {
+        margin-right: 0;
+        z-index: 1500;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+    }
+    
+    #leftSidebar .collapse-btn {
+        left: 0px;
+    }
+    
+    #leftSidebar:not(.collapsed) .collapse-btn {
+        left: 200px;
+    }
+    
+    #rightSidebar .collapse-btn {
+        right: 0px;
+    }
+    
+    #rightSidebar:not(.collapsed) .collapse-btn {
+        right: 300px;
+    }
+    
+    #topBar {
+        height: 56px;
+        padding: 0 8px;
+        flex-wrap: wrap;
+    }
+    
+    #mainContent {
+        top: 56px;
+    }
+    
+    .top-left h1 {
+        font-size: 14px;
+    }
+    
+    .tool-btn span {
+        display: none;
+    }
+    
+    .tool-btn {
+        padding: 8px;
+        gap: 0;
+    }
+    
+    .primary-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .page-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Increase touch targets */
+    .icon-btn {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .handle {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .rotate-handle {
+        width: 18px;
+        height: 18px;
+    }
+    
+    /* Larger tab buttons for touch */
+    .tab-btn {
+        padding: 14px 12px;
+        font-size: 12px;
+    }
+    
+    /* Adjust modal for mobile */
+    .modal-content {
+        max-width: 95%;
+        max-height: 85vh;
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .help-section h3 {
+        font-size: 16px;
+    }
+    
+    .floating-help-btn {
+        width: 48px;
+        height: 48px;
+        bottom: 16px;
+        right: 16px;
+    }
+}
+
+/* Mobile portrait (480px) */
+@media (max-width: 480px) {
+    /* Full width sidebars on small mobile */
+    #leftSidebar {
+        width: 100%;
+        max-width: 280px;
+    }
+    
+    #rightSidebar {
+        width: 100%;
+        max-width: 320px;
+    }
+    
+    /* Adjust button positions for full-width sidebars */
+    #leftSidebar:not(.collapsed) .collapse-btn {
+        left: calc(100% - 25px);
+        max-width: 280px;
+    }
+    
+    #rightSidebar:not(.collapsed) .collapse-btn {
+        right: calc(100% - 25px);
+        max-width: 320px;
+    }
+    
+    #topBar {
+        height: 52px;
+        gap: 4px;
+    }
+    
+    #mainContent {
+        top: 52px;
+    }
+    
+    .top-left h1 {
+        font-size: 13px;
+    }
+    
+    .top-center {
+        gap: 6px;
+    }
+    
+    .tool-group {
+        padding: 2px;
+        gap: 2px;
+    }
+    
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+    
+    /* Stack export dropdown differently */
+    .export-dropdown-menu {
+        right: 0;
+        min-width: 160px;
+    }
+    
+    #canvasWrapper {
+        margin: 10px;
+    }
+
+    .sidebar-section {
+        padding: 12px;
+    }
+    
+    .sidebar-section h3 {
+        font-size: 11px;
+        margin-bottom: 8px;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+    
+    input[type="color"] {
+        height: 36px;
+    }
+    
+    .color-input-large {
+        height: 48px;
+    }
+    
+    /* Single column for two-col layouts */
+    .two-col {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .tab-content {
+        padding: 12px;
+    }
+    
+    .section {
+        margin-bottom: 16px;
+    }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    #topBar {
+        height: 48px;
+    }
+    
+    #mainContent {
+        top: 48px;
+    }
+
+    .top-left h1 {
+        font-size: 12px;
+    }
+    
+    .sidebar-section {
+        padding: 8px;
+    }
+    
+    .tab-content {
+        padding: 8px;
+    }
+    
+    .modal-content {
+        max-height: 90vh;
+    }
+    
+    .modal-body {
+        padding: 12px;
     }
 }
