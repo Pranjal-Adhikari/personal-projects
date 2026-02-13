@@ -30,7 +30,10 @@ const $$ = sel => document.querySelectorAll(sel);
 const canvasWrapper = $("canvasWrapper");
 const emptyState = $("emptyState");
 const [imageCanvas, editCanvas] = [$("imageCanvas"), $("editCanvas")];
-const [ctxImage, ctxEdit] = [imageCanvas.getContext("2d"), editCanvas.getContext("2d")];
+const [ctxImage, ctxEdit] = [
+  imageCanvas.getContext("2d"), 
+  editCanvas.getContext("2d", { willReadFrequently: true, desynchronized: true })
+];
 const loadingOverlay = $("loadingOverlay");
 
 const textBoxes = new Set();
@@ -48,7 +51,10 @@ const state = {
   imageLoaded: false,
   currentImageURL: null,
   pages: [],
-  currentPageIndex: 0
+  currentPageIndex: 0,
+  currentStrokePoints: [],
+  currentStrokeStart: null,
+  textAlign: "left"
 };
 
 /* ===================================
@@ -71,31 +77,74 @@ const enableTools = (enabled) => {
 /* ===================================
    UNDO/REDO SYSTEM
    =================================== */
-const saveState = action => {
+const saveState = async action => {
   const currentUndoStack = state.undoStack;
   
-  currentUndoStack.push({
-    action,
-    timestamp: Date.now(),
-    editCanvas: ctxEdit.getImageData(0, 0, editCanvas.width, editCanvas.height),
-    textBoxes: Array.from(textBoxes).map(box => ({
-      id: box.dataset.id,
-      left: parseFloat(box.style.left),
-      top: parseFloat(box.style.top),
-      width: parseFloat(box.style.width),
-      height: parseFloat(box.style.height),
-      fontSize: parseInt(box.style.fontSize),
-      fontFamily: box.style.fontFamily,
-      lineHeight: box.style.lineHeight,
-      rotation: box._rotation,
-      text: box.querySelector('.textbox-content')?.innerText || '',
-      textColor: box._textColor || "#000000",
-      strokeColor: box._strokeColor || "#ffffff",
-      strokeWidth: box._strokeWidth || 0,
-      bold: box._bold || false,
-      italic: box._italic || false
-    }))
-  });
+  // Delta compression for brush strokes
+  if (action === 'brush' && state.currentStrokePoints.length > 0) {
+    currentUndoStack.push({
+      action,
+      timestamp: Date.now(),
+      strokeData: {
+        points: [...state.currentStrokePoints],
+        color: state.brushColor,
+        size: state.brushSize,
+        tool: state.tool === 'eraser' ? 'eraser' : 'brush',
+        startCanvas: state.currentStrokeStart
+      },
+      textBoxes: Array.from(textBoxes).map(box => ({
+        id: box.dataset.id,
+        left: parseFloat(box.style.left),
+        top: parseFloat(box.style.top),
+        width: parseFloat(box.style.width),
+        height: parseFloat(box.style.height),
+        fontSize: parseInt(box.style.fontSize),
+        fontFamily: box.style.fontFamily,
+        lineHeight: box.style.lineHeight,
+        rotation: box._rotation,
+        text: box.querySelector('.textbox-content')?.innerText || '',
+        textColor: box._textColor || "#000000",
+        strokeColor: box._strokeColor || "#ffffff",
+        strokeWidth: box._strokeWidth || 0,
+        bold: box._bold || false,
+        italic: box._italic || false,
+        textAlign: box._textAlign || "left"
+      }))
+	});
+    state.currentStrokePoints = [];
+    state.currentStrokeStart = null;
+  } else {
+    // Compress and store full state of non-brush strokes
+    const compressedCanvas = await new Promise(resolve => {
+      editCanvas.toBlob(blob => {
+        resolve(blob);
+      }, 'image/png', 0.8);
+    });
+    
+    currentUndoStack.push({
+      action,
+      timestamp: Date.now(),
+      editCanvasBlob: compressedCanvas,
+      textBoxes: Array.from(textBoxes).map(box => ({
+        id: box.dataset.id,
+        left: parseFloat(box.style.left),
+        top: parseFloat(box.style.top),
+        width: parseFloat(box.style.width),
+        height: parseFloat(box.style.height),
+        fontSize: parseInt(box.style.fontSize),
+        fontFamily: box.style.fontFamily,
+        lineHeight: box.style.lineHeight,
+        rotation: box._rotation,
+        text: box.querySelector('.textbox-content')?.innerText || '',
+        textColor: box._textColor || "#000000",
+        strokeColor: box._strokeColor || "#ffffff",
+        strokeWidth: box._strokeWidth || 0,
+        bold: box._bold || false,
+        italic: box._italic || false,
+        textAlign: box._textAlign || "left"
+      }))
+	});
+  }
   
   if (currentUndoStack.length > CONFIG.MAX_UNDO_STEPS) {
     currentUndoStack.shift();
@@ -112,25 +161,60 @@ const saveState = action => {
   updateHistoryLog();
 };
 
-const undo = () => {
+const undo = async () => {
   if (state.undoStack.length <= 1) return;
   state.redoStack.push(state.undoStack.pop());
-  restoreState(state.undoStack[state.undoStack.length - 1]);
+  await restoreState(state.undoStack[state.undoStack.length - 1]);
   updateUndoRedoButtons();
   updateHistoryLog();
 };
 
-const redo = () => {
+const redo = async () => {
   if (!state.redoStack.length) return;
   const nextState = state.redoStack.pop();
   state.undoStack.push(nextState);
-  restoreState(nextState);
+  await restoreState(nextState);
   updateUndoRedoButtons();
   updateHistoryLog();
 };
 
-const restoreState = s => {
-  ctxEdit.putImageData(s.editCanvas, 0, 0);
+const restoreState = async s => {
+  // Stroke data handling (delta)
+  if (s.strokeData) {
+    // Start from base canvas
+    if (s.strokeData.startCanvas) {
+      const img = await createImageBitmap(s.strokeData.startCanvas);
+      ctxEdit.clearRect(0, 0, editCanvas.width, editCanvas.height);
+      ctxEdit.drawImage(img, 0, 0);
+    }
+    
+    // Replay the stroke
+    const { points, color, size, tool } = s.strokeData;
+    if (points.length > 0) {
+      ctxEdit.lineWidth = size;
+      ctxEdit.lineCap = "round";
+      ctxEdit.lineJoin = "round";
+      ctxEdit.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+      if (tool === "brush") {
+        ctxEdit.strokeStyle = color;
+      }
+      
+      ctxEdit.beginPath();
+      ctxEdit.moveTo(points[0].x, points[0].y);
+      points.forEach(pt => ctxEdit.lineTo(pt.x, pt.y));
+      ctxEdit.stroke();
+    }
+  } 
+  // Handle compressed blob
+  else if (s.editCanvasBlob) {
+    const img = await createImageBitmap(s.editCanvasBlob);
+    ctxEdit.clearRect(0, 0, editCanvas.width, editCanvas.height);
+    ctxEdit.drawImage(img, 0, 0);
+  }
+  // Fallback
+  else if (s.editCanvas) {
+    ctxEdit.putImageData(s.editCanvas, 0, 0);
+  }
   
   textBoxes.forEach(box => box.remove());
   textBoxes.clear();
@@ -158,14 +242,13 @@ const updateHistoryLog = () => {
     : '<div style="color: #999; font-size: 11px; padding: 8px;">No history yet</div>';
 };
 
-$("historyLog").addEventListener('click', e => {
+$("historyLog").addEventListener('click', async e => {
   const item = e.target.closest('.history-item');
   if (item) {
     const steps = parseInt(item.dataset.index);
-    for (let i = 0; i < steps; i++) undo();
+    for (let i = 0; i < steps; i++) await undo();
   }
 });
-
 /* ===================================
    TAB SWITCHING
    =================================== */
@@ -188,7 +271,6 @@ $$('.tab-btn').forEach(btn => {
     }
   });
 });
-
 /* ===================================
    IMAGE UPLOAD
    =================================== */
@@ -258,14 +340,19 @@ $("fileInput").addEventListener('change', e => {
     enableTools(true);
     updatePageControls();
     
+	// Centering code that doesn't work but I'm too lazy to re-do ;^;
     setTimeout(() => {
       const container = $('centerArea');
-      const wrapperWidth = width + 40;
-      if (wrapperWidth > container.clientWidth) {
-        container.scrollLeft = (wrapperWidth - container.clientWidth) / 2;
-      }
+      const wrapper = canvasWrapper;
+      
+      // Calculate scroll positions to center image
+      const scrollLeft = (wrapper.offsetWidth - container.clientWidth) / 2;
+      const scrollTop = (wrapper.offsetHeight - container.clientHeight) / 2;
+      
+      container.scrollLeft = Math.max(0, scrollLeft);
+      container.scrollTop = Math.max(0, scrollTop);
     }, 50);
-    
+	
     URL.revokeObjectURL(state.currentImageURL);
     state.currentImageURL = null;
   };
@@ -318,10 +405,17 @@ const updateBrushCursor = () => {
   cursor.style.width = cursor.style.height = size + "px";
 };
 
-editCanvas.addEventListener('pointerdown', e => {
+editCanvas.addEventListener('pointerdown', async e => {
   if (!state.imageLoaded || (state.tool !== "brush" && state.tool !== "eraser")) return;
   
   state.drawing = true;
+  state.currentStrokePoints = [];
+  
+  // Save canvas state before stroke begins
+  state.currentStrokeStart = await new Promise(resolve => {
+    editCanvas.toBlob(blob => resolve(blob), 'image/png', 0.8);
+  });
+  
   const size = state.tool === "eraser" ? state.eraserSize : state.brushSize;
   
   ctxEdit.lineWidth = size;
@@ -337,12 +431,15 @@ editCanvas.addEventListener('pointerdown', e => {
   ctxEdit.moveTo(e.offsetX, e.offsetY);
   ctxEdit.lineTo(e.offsetX, e.offsetY);
   ctxEdit.stroke();
+  
+  state.currentStrokePoints.push({ x: e.offsetX, y: e.offsetY });
 });
 
 editCanvas.addEventListener('pointermove', e => {
   if (state.drawing && (state.tool === "brush" || state.tool === "eraser")) {
     ctxEdit.lineTo(e.offsetX, e.offsetY);
     ctxEdit.stroke();
+    state.currentStrokePoints.push({ x: e.offsetX, y: e.offsetY });
   }
 });
 
@@ -457,6 +554,13 @@ const setCurrentTextBox = (box, updateSidebar = true) => {
     $("strokeWidthInput").value = box._strokeWidth || 0;
     $("boldCheck").checked = box._bold || false;
     $("italicCheck").checked = box._italic || false;
+    
+    // Update alignment buttons
+    const align = box._textAlign || "left";
+    state.textAlign = align;
+    $$('.alignment-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.align === align);
+    });
   }
 };
 
@@ -510,7 +614,8 @@ const createTextBox = (opts = {}, shouldSaveState = true) => {
     _strokeWidth: opts.strokeWidth || 0,
     _bold: opts.bold || false,
     _italic: opts.italic || false,
-    _rotation: opts.rotation || 0
+    _rotation: opts.rotation || 0,
+    _textAlign: opts.textAlign || "left"
   });
   
   applyFontStyle(box);
@@ -520,7 +625,7 @@ const createTextBox = (opts = {}, shouldSaveState = true) => {
   textContent.className = "textbox-content";
   textContent.contentEditable = true;
   textContent.innerText = opts.text || CONFIG.DEFAULT_TEXT;
-  textContent.style.cssText = "width: 100%; height: 100%; outline: none;";
+  textContent.style.cssText = `width: 100%; height: 100%; outline: none; text-align: ${box._textAlign};`;
   box.appendChild(textContent);
   
   ["nw","n","ne","e","se","s","sw","w"].forEach(h => {
@@ -663,6 +768,27 @@ $("textInput").addEventListener('input', () => {
   debouncedTextModify();
 });
 
+// Alignment buttons
+$$('.alignment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!state.currentTextBox) return;
+    
+    const align = btn.dataset.align;
+    state.textAlign = align;
+    state.currentTextBox._textAlign = align;
+    
+    const textContent = state.currentTextBox.querySelector('.textbox-content');
+    if (textContent) {
+      textContent.style.textAlign = align;
+    }
+    
+    $$('.alignment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    saveState('text-modify');
+  });
+});
+
 const textControls = [
   ['fontSizeInput', (v, box) => { box.style.fontSize = v + "px"; }],
   ['fontFamilySel', (v, box) => { box.style.fontFamily = v; }],
@@ -729,7 +855,8 @@ $("duplicateText").addEventListener('click', () => {
     strokeColor: box._strokeColor,
     strokeWidth: box._strokeWidth,
     bold: box._bold,
-    italic: box._italic
+    italic: box._italic,
+    textAlign: box._textAlign || "left"
   });
   saveState('text-duplicate');
 });
@@ -841,7 +968,7 @@ const exportSinglePage = (page, filename) => {
     ctx.save();
     
     const { left, top, width, height, fontSize, lineHeight, rotation, text,
-            textColor, strokeColor, strokeWidth, bold, italic, fontFamily } = boxData;
+            textColor, strokeColor, strokeWidth, bold, italic, fontFamily, textAlign } = boxData;
     
     ctx.translate(left + width/2, top + height/2);
     ctx.rotate(rotation * Math.PI / 180);
@@ -849,13 +976,25 @@ const exportSinglePage = (page, filename) => {
     const fontStyle = italic ? "italic " : "";
     const fontWeight = bold ? "bold " : "";
     ctx.font = `${fontStyle}${fontWeight}${fontSize}px ${fontFamily}`;
-    ctx.textAlign = "left";
+    
+    // Set alignment based on textAlign property
+    const align = textAlign || "left";
+    ctx.textAlign = align === "justify" ? "left" : align; // Justify uses left alignment with word spacing
     ctx.textBaseline = "alphabetic";
     
     const lineHeightPx = lineHeight * fontSize;
     const maxWidth = width - 12;
     let y = -height/2 + 6 + fontSize * 0.8;
-    const x = -width/2 + 6;
+    
+    // Calculate x position based on alignment
+    let x;
+    if (align === "left" || align === "justify") {
+      x = -width/2 + 6;
+    } else if (align === "center") {
+      x = 0;
+    } else if (align === "right") {
+      x = width/2 - 6;
+    }
     
     text.split('\n').forEach((para, pIndex) => {
       if (!para) {
@@ -866,10 +1005,27 @@ const exportSinglePage = (page, filename) => {
       const words = para.split(' ');
       let currentLine = '';
       
-      words.forEach(word => {
+      words.forEach((word, wIndex) => {
         const testLine = currentLine + (currentLine ? ' ' : '') + word;
         if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-          renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+          // Render current line
+          if (align === "justify" && wIndex < words.length - 1) {
+            // Justify text by spacing words evenly
+            const lineWords = currentLine.split(' ');
+            if (lineWords.length > 1) {
+              const lineWidth = lineWords.reduce((sum, w) => sum + ctx.measureText(w).width, 0);
+              const spacing = (maxWidth - lineWidth) / (lineWords.length - 1);
+              let xPos = -width/2 + 6;
+              lineWords.forEach((w, i) => {
+                renderTextWithStroke(ctx, w, xPos, y, textColor, strokeColor, strokeWidth);
+                xPos += ctx.measureText(w).width + spacing;
+              });
+            } else {
+              renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+            }
+          } else {
+            renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+          }
           y += lineHeightPx;
           currentLine = word;
         } else {
@@ -900,9 +1056,8 @@ const exportSinglePage = (page, filename) => {
 };
 
 const exportAllPages = () => {
-  // Ensure all pages have valid data before exporting
+  // Valid data?
   state.pages.forEach((page, index) => {
-    // Check if page has required data, if not it means the page wasn't properly initialized
     if (!page.editCanvas || !page.textBoxes) {
       console.warn(`Page ${index + 1} missing data, using empty defaults`);
       page.editCanvas = page.editCanvas || ctxEdit.createImageData(page.width, page.height);
@@ -958,7 +1113,7 @@ const exportAllPagesAsZip = async () => {
       ctx.save();
       
       const { left, top, width, height, fontSize, lineHeight, rotation, text,
-              textColor, strokeColor, strokeWidth, bold, italic, fontFamily } = boxData;
+              textColor, strokeColor, strokeWidth, bold, italic, fontFamily, textAlign } = boxData;
       
       ctx.translate(left + width/2, top + height/2);
       ctx.rotate(rotation * Math.PI / 180);
@@ -966,13 +1121,25 @@ const exportAllPagesAsZip = async () => {
       const fontStyle = italic ? "italic " : "";
       const fontWeight = bold ? "bold " : "";
       ctx.font = `${fontStyle}${fontWeight}${fontSize}px ${fontFamily}`;
-      ctx.textAlign = "left";
+      
+      // Set alignment based on textAlign property
+      const align = textAlign || "left";
+      ctx.textAlign = align === "justify" ? "left" : align;
       ctx.textBaseline = "alphabetic";
       
       const lineHeightPx = lineHeight * fontSize;
       const maxWidth = width - 12;
       let y = -height/2 + 6 + fontSize * 0.8;
-      const x = -width/2 + 6;
+      
+      // Calculate x position based on alignment
+      let x;
+      if (align === "left" || align === "justify") {
+        x = -width/2 + 6;
+      } else if (align === "center") {
+        x = 0;
+      } else if (align === "right") {
+        x = width/2 - 6;
+      }
       
       text.split('\n').forEach((para, pIndex) => {
         if (!para) {
@@ -983,10 +1150,27 @@ const exportAllPagesAsZip = async () => {
         const words = para.split(' ');
         let currentLine = '';
         
-        words.forEach(word => {
+        words.forEach((word, wIndex) => {
           const testLine = currentLine + (currentLine ? ' ' : '') + word;
           if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-            renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+            // Render current line
+            if (align === "justify" && wIndex < words.length - 1) {
+              // Justify text by spacing words evenly
+              const lineWords = currentLine.split(' ');
+              if (lineWords.length > 1) {
+                const lineWidth = lineWords.reduce((sum, w) => sum + ctx.measureText(w).width, 0);
+                const spacing = (maxWidth - lineWidth) / (lineWords.length - 1);
+                let xPos = -width/2 + 6;
+                lineWords.forEach((w, i) => {
+                  renderTextWithStroke(ctx, w, xPos, y, textColor, strokeColor, strokeWidth);
+                  xPos += ctx.measureText(w).width + spacing;
+                });
+              } else {
+                renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+              }
+            } else {
+              renderTextWithStroke(ctx, currentLine, x, y, textColor, strokeColor, strokeWidth);
+            }
             y += lineHeightPx;
             currentLine = word;
           } else {
@@ -1004,7 +1188,7 @@ const exportAllPagesAsZip = async () => {
       
       ctx.restore();
     });
-    
+	
     // Convert canvas to blob and add to zip
     const dataUrl = tmp.toDataURL('image/png');
     const base64Data = dataUrl.split(',')[1];
@@ -1045,7 +1229,8 @@ const saveCurrentPageState = () => {
     strokeColor: box._strokeColor || "#ffffff",
     strokeWidth: box._strokeWidth || 0,
     bold: box._bold || false,
-    italic: box._italic || false
+    italic: box._italic || false,
+    textAlign: box._textAlign || "left"
   }));
   
   currentPage.undoStack = [...state.undoStack];
@@ -1079,6 +1264,19 @@ const loadPage = (pageIndex) => {
   updateUndoRedoButtons();
   updateHistoryLog();
   updatePageControls();
+  
+  // Center the image in the viewport
+  setTimeout(() => {
+    const container = $('centerArea');
+    const wrapper = canvasWrapper;
+    
+    // Calculate scroll positions to center the image
+    const scrollLeft = (wrapper.offsetWidth - container.clientWidth) / 2;
+    const scrollTop = (wrapper.offsetHeight - container.clientHeight) / 2;
+    
+    container.scrollLeft = Math.max(0, scrollLeft);
+    container.scrollTop = Math.max(0, scrollTop);
+  }, 50);
 };
 
 const updatePageControls = () => {
@@ -1170,8 +1368,193 @@ $("deletePageBtn").addEventListener('click', () => {
 });
 
 /* ===================================
-   INITIALIZATION
+   SIDEBAR COLLAPSE
    =================================== */
+$("collapseLeftBtn").addEventListener('click', () => {
+  $("leftSidebar").classList.toggle('collapsed');
+});
+
+$("collapseRightBtn").addEventListener('click', () => {
+  $("rightSidebar").classList.toggle('collapsed');
+});
+
+/* ===================================
+   CUSTOM FONT IMPORT
+   =================================== */
+const customFonts = new Set(); // Track imported font names
+
+$("importFontBtn").addEventListener('click', () => {
+  $("fontFileInput").click();
+});
+
+$("fontFileInput").addEventListener('change', async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+  
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per font
+  const ALLOWED_EXTENSIONS = /\.(ttf|otf|woff|woff2)$/i;
+  const ALLOWED_MIME_TYPES = [
+    'font/ttf',
+    'font/otf',
+    'font/woff',
+    'font/woff2',
+    'application/x-font-ttf',
+    'application/x-font-otf',
+    'application/font-woff',
+    'application/font-woff2',
+    'application/octet-stream' // I don't think this is common
+  ];
+  
+  let successCount = 0;
+  let errorCount = 0;
+  
+  for (const file of files) {
+    try {
+      // 1. Check file extension
+      if (!ALLOWED_EXTENSIONS.test(file.name)) {
+        console.error(`Invalid file extension: ${file.name}`);
+        errorCount++;
+        continue;
+      }
+      
+      // 2. Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        console.error(`File too large: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+        errorCount++;
+        continue;
+      }
+      
+      // 3. Check MIME type
+      if (!ALLOWED_MIME_TYPES.includes(file.type) && file.type !== '') {
+        console.error(`Invalid MIME type: ${file.name} (${file.type})`);
+        errorCount++;
+        continue;
+      }
+      
+      // 4. Validate font file by attempting to load it
+      const fontName = file.name.replace(/\.(ttf|otf|woff|woff2)$/i, '');
+      const fontUrl = URL.createObjectURL(file);
+      const fontFace = new FontFace(fontName, `url(${fontUrl})`);
+      
+      // Valid font?
+      await fontFace.load();
+      
+      document.fonts.add(fontFace);
+      customFonts.add(fontName);
+      
+      const fontSelect = $("fontFamilySel");
+      const existingOption = Array.from(fontSelect.options).find(
+        opt => opt.value === fontName
+      );
+      
+      if (!existingOption) {
+        const option = document.createElement('option');
+        option.value = fontName;
+        option.textContent = fontName + ' (Custom)';
+        fontSelect.appendChild(option);
+      }
+      
+      successCount++;
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(fontUrl), 60000);
+      
+    } catch (error) {
+      console.error(`Failed to load font: ${file.name}`, error);
+      errorCount++;
+    }
+  }
+  
+  if (successCount > 0) {
+    showNotification(`Successfully imported ${successCount} font${successCount > 1 ? 's' : ''}!`, 'success');
+  }
+  
+  if (errorCount > 0) {
+    showNotification(`Failed to import ${errorCount} font${errorCount > 1 ? 's' : ''}. Invalid or corrupted files.`, 'error');
+  }
+  
+  e.target.value = '';
+});
+
+const showNotification = (message, type = 'info') => {
+  const notification = document.createElement('div');
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    padding: 12px 20px;
+    background: ${type === 'success' ? '#0e639c' : '#c72e2e'};
+    color: white;
+    border-radius: 4px;
+    z-index: 10001;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease;
+  `;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+};
+
+if (!document.querySelector('#notificationStyles')) {
+  const style = document.createElement('style');
+  style.id = 'notificationStyles';
+  style.textContent = `
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+/* ===================================
+   INITIALIZATION FINALLY OMG
+   =================================== */
+// Help modal
+$("helpBtn").addEventListener('click', () => {
+  $("helpModal").classList.add('show');
+});
+
+$("closeHelpBtn").addEventListener('click', () => {
+  $("helpModal").classList.remove('show');
+});
+
+// Close modal when clicking outside
+$("helpModal").addEventListener('click', (e) => {
+  if (e.target === $("helpModal")) {
+    $("helpModal").classList.remove('show');
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $("helpModal").classList.contains('show')) {
+    $("helpModal").classList.remove('show');
+  }
+});
+
 updateBrushCursor();
 updateUndoRedoButtons();
 updateHistoryLog();
