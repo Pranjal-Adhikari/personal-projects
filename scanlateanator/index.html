@@ -66,6 +66,11 @@
     
     <!-- LEFT SIDEBAR -->
     <aside id="leftSidebar">
+      <button id="collapseLeftBtn" class="collapse-btn collapse-left" title="Collapse Sidebar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
       <div class="sidebar-section">
         <h3>Pages</h3>
         <div id="pageControls">
@@ -89,7 +94,7 @@
     <div id="centerArea">
       <div id="emptyState">
         <h2>Welcome to Scanlateanator</h2>
-        <p>Upload an image to start editing. This site is meant for web-based manga scanlation and comic translation.</p>
+        <p>Upload an image to start editing. Perfect for manga scanlation, comic translation, and image editing.</p>
         <button class="primary-btn" onclick="document.getElementById('uploadBtn').click()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:8px">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -108,8 +113,13 @@
 
     <!-- RIGHT SIDEBAR WITH TABS -->
     <aside id="rightSidebar">
+      <button id="collapseRightBtn" class="collapse-btn collapse-right" title="Collapse Sidebar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
       <div class="tabs">
-	    <button class="tab-btn active" data-tab="brush">Brush</button>
+        <button class="tab-btn active" data-tab="brush">Brush</button>
         <button class="tab-btn" data-tab="eraser">Eraser</button>
         <button class="tab-btn" data-tab="text">Text</button>
         <button class="tab-btn" data-tab="layers">Layers</button>
@@ -166,6 +176,15 @@
             <option>Courier New</option>
             <option>Georgia</option>
           </select>
+          <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" multiple style="display:none" />
+          <button id="importFontBtn" class="secondary-btn" style="margin-top: 8px; width: 100%;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:6px">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import Custom Fonts
+          </button>
         </div>
 
         <div class="section two-col">
@@ -190,6 +209,44 @@
               <input id="italicCheck" type="checkbox" />
               <span>Italic</span>
             </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <label class="section-label">Alignment</label>
+          <div class="alignment-group">
+            <button class="alignment-btn active" data-align="left" title="Align Left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="17" y1="10" x2="3" y2="10"></line>
+                <line x1="21" y1="6" x2="3" y2="6"></line>
+                <line x1="21" y1="14" x2="3" y2="14"></line>
+                <line x1="17" y1="18" x2="3" y2="18"></line>
+              </svg>
+            </button>
+            <button class="alignment-btn" data-align="center" title="Align Center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="10" x2="6" y2="10"></line>
+                <line x1="21" y1="6" x2="3" y2="6"></line>
+                <line x1="21" y1="14" x2="3" y2="14"></line>
+                <line x1="18" y1="18" x2="6" y2="18"></line>
+              </svg>
+            </button>
+            <button class="alignment-btn" data-align="right" title="Align Right">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="21" y1="10" x2="7" y2="10"></line>
+                <line x1="21" y1="6" x2="3" y2="6"></line>
+                <line x1="21" y1="14" x2="3" y2="14"></line>
+                <line x1="21" y1="18" x2="7" y2="18"></line>
+              </svg>
+            </button>
+            <button class="alignment-btn" data-align="justify" title="Justify">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="21" y1="10" x2="3" y2="10"></line>
+                <line x1="21" y1="6" x2="3" y2="6"></line>
+                <line x1="21" y1="14" x2="3" y2="14"></line>
+                <line x1="21" y1="18" x2="3" y2="18"></line>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -225,7 +282,7 @@
 		
 		<div class="section">
           <p style="color: #999; font-size: 12px; line-height: 1.5;">
-            The text tool lets you add editable text boxes to your image. Click on the "Text" button on the top, then on the canvas to place text, then customize the font, size, colors, and styling. Three features: drag to move, handles to resize, and the top handle is used to rotate.
+            The text tool lets you add editable text boxes to your image. Customize the font, size, colors, and styling. Drag top left corner to move, use handles to resize, and the top center handle to rotate.
           </p>
         </div>
       </div>
@@ -244,7 +301,7 @@
         </div>
 		<div class="section">
           <p style="color: #999; font-size: 12px; line-height: 1.5;">
-            Control the visibility of different editing layers. Toggle text boxes and brush edits on or off to preview your work or focus on specific elements while editing.
+            Control the visibility of different editing layers. You are able to toggle text boxes and brush edits on or off.
           </p>
         </div>
       </div>
@@ -255,7 +312,139 @@
   <div id="loadingOverlay">
     <div style="text-align:center;color:#fff;">
       <div style="font-size:18px;margin-bottom:12px;">Exporting...</div>
-      <div style="font-size:14px;color:#999;">Processing image and text layers</div>
+      <div style="font-size:14px;color:#999;">Processing image and text layers.</div>
+    </div>
+  </div>
+
+  <!-- Floating Help Button -->
+  <button id="helpBtn" class="floating-help-btn" title="Help & Guide">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  </button>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Scanlateanator Help</h2>
+        <button id="closeHelpBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <section class="help-section">
+          <h3>Getting Started</h3>
+          <p>Click the <strong>Upload Image</strong> button to load your manga page or comic image. The editor supports most common image formats (PNG, JPG, WebP, etc.).</p>
+        </section>
+
+        <section class="help-section">
+          <h3>Tools Overview</h3>
+          
+          <div class="help-item">
+            <h4>Brush Tool</h4>
+            <p>Paint over your image with a selected color. Perfect for cleaning up speech bubbles, removing text, or covering unwanted elements.</p>
+            <ul>
+              <li>Adjust size with the slider (2-120px)</li>
+              <li>Choose any color with the color picker</li>
+              <li>White is commonly used for bubble cleanup</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>Eraser Tool</h4>
+            <p>Remove brush strokes you've made. Note: This only erases your edits, not the original image.</p>
+            <ul>
+              <li>Adjust eraser size as needed</li>
+              <li>Use to fix mistakes or refine brush work</li>
+            </ul>
+          </div>
+
+          <div class="help-item">
+            <h4>Text Tool</h4>
+            <p>Add translated or custom text to your image.</p>
+            <ul>
+              <li>Click the Text button, then click on the canvas to place a text box</li>
+              <li>Double-click the text to edit content</li>
+              <li><strong>Move:</strong> Drag the top-left handle (northwest corner)</li>
+              <li><strong>Resize:</strong> Drag any other corner or edge handle</li>
+              <li><strong>Rotate:</strong> Drag the circular handle above the text box</li>
+              <li>Customize font, size, colors, stroke, and alignment in the sidebar</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="help-section">
+          <h3>Multi-Page Management</h3>
+          <p>Work on multiple pages in a single session:</p>
+          <ul>
+            <li><strong>Add Page:</strong> Click "+ Add Page" and upload a new image</li>
+            <li><strong>Switch Pages:</strong> Use the dropdown to navigate between pages</li>
+            <li><strong>Delete Page:</strong> Remove the current page (requires at least 2 pages)</li>
+            <li>Each page maintains its own edits, text, and undo history</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>Undo/Redo</h3>
+          <p>The editor tracks up to 20 actions per page:</p>
+          <ul>
+            <li><strong>Undo:</strong> Ctrl+Z (or ⌘+Z on Mac) or click the undo button</li>
+            <li><strong>Redo:</strong> Ctrl+Y or Ctrl+Shift+Z (⌘+Shift+Z on Mac)</li>
+            <li>View history in the left sidebar and click to jump to any state</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>Layers</h3>
+          <p>Toggle visibility of different editing layers:</p>
+          <ul>
+            <li><strong>Text Layer:</strong> Show/hide all text boxes</li>
+            <li><strong>Edit Layer:</strong> Show/hide all brush strokes</li>
+            <li>Useful for previewing your work or focusing on specific edits</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>Exporting</h3>
+          <p>Save your finished work:</p>
+          <ul>
+            <li><strong>Current Page:</strong> Export the active page as a PNG</li>
+            <li><strong>All Pages:</strong> Export all pages as a ZIP file (if multiple pages exist)</li>
+            <li>Exports combine the original image, brush edits, and rendered text into a single flattened image</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>Keyboard Shortcuts</h3>
+          <ul>
+            <li><strong>Ctrl+Z / ⌘+Z:</strong> Undo</li>
+            <li><strong>Ctrl+Y / ⌘+Shift+Z:</strong> Redo</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>How to Use</h3>
+          <ul>
+            <li>Use a white brush to clean speech bubbles before adding translated text, for manga</li>
+            <li>Adjust the text stroke width (default 0) to make text more readable over busy backgrounds</li>
+            <li>Save your work by exporting. !!!! The editor doesn't auto-save !!!</li>
+            <li>Large images (over 4096px) are automatically resized for performance</li>
+            <li>Use the history panel to quickly review/undo/redo your editing steps</li>
+            <li>Text alignment (left/center/right/justify) helps match original layouts</li>
+          </ul>
+        </section>
+
+        <section class="help-section">
+          <h3>Limitations</h3>
+          <ul>
+            <li>No auto-save, so remember to export your work!!!</li>
+            <li>Closing the browser will lose all unsaved progress</li>
+            <li>Maximum 20 undo steps per page</li>
+            <li>Images over 4096px in either dimension are automatically scaled down for memory</li>
+          </ul>
+        </section>
+      </div>
     </div>
   </div>
 
