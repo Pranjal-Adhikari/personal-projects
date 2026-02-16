@@ -11,11 +11,10 @@
       display: none;
     }
 
-    /* Mobile/Tablet: Show landing page, hide desktop app */
+    /* Mobile/Tablet - Show landing page */
     @media (max-width: 1024px) {
       body {
         overflow: auto !important;
-        height: auto !important;
       }
 
       #desktopApp {
@@ -27,20 +26,21 @@
       }
     }
 
-    /* Mobile page styles */
+    /* Mobile landing page styles */
     .mobile-page {
       max-width: 600px;
       margin: 0 auto;
       padding: 60px 24px;
     }
 
-    .mobile-page .logo {
+    .mobile-logo {
       font-size: 28px;
       font-weight: 600;
       margin-bottom: 8px;
+      color: #e0e0e0;
     }
 
-    .mobile-page .subtitle {
+    .mobile-subtitle {
       color: #999;
       margin-bottom: 40px;
     }
@@ -50,11 +50,13 @@
       border: 1px solid #3e3e42;
       padding: 24px;
       margin-bottom: 32px;
+      border-radius: 4px;
     }
 
     .notice-box h2 {
       font-size: 20px;
       margin-bottom: 12px;
+      color: #e0e0e0;
     }
 
     .notice-box p {
@@ -71,33 +73,37 @@
       text-decoration: none;
       border-radius: 4px;
       font-weight: 500;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
     }
 
     .desktop-btn:hover {
       background: #1177bb;
     }
 
-    .mobile-page .features {
+    .mobile-features {
       margin-bottom: 32px;
     }
 
-    .mobile-page .features h3 {
+    .mobile-features h3 {
       font-size: 18px;
       margin-bottom: 16px;
+      color: #e0e0e0;
     }
 
-    .mobile-page .features ul {
+    .mobile-features ul {
       list-style: none;
       padding: 0;
     }
 
-    .mobile-page .features li {
+    .mobile-features li {
       padding: 10px 0;
       border-bottom: 1px solid #3e3e42;
       color: #ccc;
     }
 
-    .mobile-page .features li:last-child {
+    .mobile-features li:last-child {
       border-bottom: none;
     }
 
@@ -106,6 +112,7 @@
       border: 1px solid #3e3e42;
       padding: 12px;
       margin-bottom: 16px;
+      border-radius: 4px;
     }
 
     .screenshot-box {
@@ -116,6 +123,7 @@
       justify-content: center;
       color: #666;
       font-size: 14px;
+      border-radius: 2px;
     }
 
     .caption {
@@ -124,24 +132,25 @@
       color: #999;
     }
 
-    .why {
+    .mobile-why {
       margin-top: 32px;
       padding-top: 32px;
       border-top: 1px solid #3e3e42;
     }
 
-    .why h3 {
+    .mobile-why h3 {
       font-size: 18px;
       margin-bottom: 12px;
+      color: #e0e0e0;
     }
 
-    .why p {
+    .mobile-why p {
       color: #ccc;
       line-height: 1.6;
       margin-bottom: 12px;
     }
 
-    .mobile-page footer {
+    .mobile-footer {
       margin-top: 48px;
       padding-top: 24px;
       border-top: 1px solid #3e3e42;
@@ -152,23 +161,23 @@
   </style>
 </head>
 <body>
-
+  
   <!-- Mobile Landing Page -->
   <div id="mobileLanding">
     <div class="mobile-page">
       
-      <div class="logo">Scanlateanator</div>
-      <div class="subtitle">An image editor for manga scanlation</div>
+      <div class="mobile-logo">Scanlateanator</div>
+      <div class="mobile-subtitle">An image editor for manga scanlation</div>
 
       <div class="notice-box">
         <h2>Desktop Required</h2>
         <p>This app is designed for desktop computers!! It requires a mouse/trackpad and keyboard for the editing features to work properly ;-;</p>
-        <a href="#" class="desktop-btn" onclick="alert('Please visit this site on your desktop/laptop computer'); return false;">
+        <button class="desktop-btn" onclick="alert('Please visit this site on your desktop computer')">
           Got it
-        </a>
+        </button>
       </div>
 
-      <div class="features">
+      <div class="mobile-features">
         <h3>What it does:</h3>
         <ul>
           <li>Brush tool for cleaning up images</li>
@@ -189,16 +198,15 @@
         <div class="caption">Add and format text boxes</div>
       </div>
 
-      <div class="why">
+      <div class="mobile-why">
         <h3>Why desktop only?</h3>
-        <p>The editor needs precise mouse control for drawing, text box handles that are too small for touch screens, eyboard shortcuts for efficient editing... and
-           I didn't design the app to be responsive so it doesn't format correctly on small screens</p>
+        <p>The editor needs precise mouse control for drawing, text box handles that are too small for touch screens, keyboard shortcuts for efficient editing... and I didn't design the app to be responsive so it doesn't format correctly on small screens</p>
         <p>It's built for the same workflow as Photoshop or GIMP, both of which are also desktop-only tools.</p>
       </div>
 
-      <footer>
+      <div class="mobile-footer">
         Open this site on your computer to use the editor
-      </footer>
+      </div>
 
     </div>
   </div>
@@ -381,51 +389,53 @@
           <div class="section">
             <label class="section-label">Font</label>
             <select id="fontFamilySel" class="select-input">
-              <option value="Arial">Arial</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Courier New">Courier New</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Verdana">Verdana</option>
-              <option value="Comic Sans MS">Comic Sans MS</option>
-              <option value="Impact">Impact</option>
-              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option>Arial</option>
+              <option>Times New Roman</option>
+              <option>Verdana</option>
+              <option>Comic Sans MS</option>
+              <option>Courier New</option>
+              <option>Georgia</option>
             </select>
+            <input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2" multiple style="display:none" />
+            <button id="importFontBtn" class="secondary-btn" style="margin-top: 8px; width: 100%;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:6px">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Import Custom Fonts
+            </button>
+          </div>
+
+          <div class="section two-col">
+            <div>
+              <label class="input-label">Size</label>
+              <input id="fontSizeInput" type="number" min="8" max="200" value="24" />
+            </div>
+            <div>
+              <label class="input-label">Line Height</label>
+              <input id="lineHeightInput" type="number" min="1" max="3" step="0.1" value="1.2" />
+            </div>
           </div>
 
           <div class="section">
-            <label class="input-label">Font Size: <span id="fontSizeValue">24</span>px</label>
-            <input id="fontSizeInput" type="range" min="8" max="120" value="24" class="slider" />
-          </div>
-
-          <div class="section">
-            <label class="section-label">Text Color</label>
-            <input id="textColorInput" type="color" value="#000000" class="color-input-large" />
-          </div>
-
-          <div class="section">
-            <label class="section-label">Background</label>
-            <input id="textBgInput" type="color" value="#ffffff" class="color-input-large" />
-            <label style="display:flex;align-items:center;margin-top:8px;cursor:pointer;">
-              <input id="textBgTransparent" type="checkbox" style="margin-right:8px" />
-              <span style="font-size:13px;color:#ccc">Transparent</span>
-            </label>
-          </div>
-
-          <div class="section">
-            <label class="input-label">Stroke Width: <span id="strokeWidthValue">0</span>px</label>
-            <input id="strokeWidthInput" type="range" min="0" max="10" value="0" class="slider" />
-          </div>
-
-          <div class="section">
-            <label class="section-label">Stroke Color</label>
-            <input id="strokeColorInput" type="color" value="#000000" class="color-input-large" />
+            <label class="section-label">Style</label>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input id="boldCheck" type="checkbox" />
+                <span>Bold</span>
+              </label>
+              <label class="checkbox-label">
+                <input id="italicCheck" type="checkbox" />
+                <span>Italic</span>
+              </label>
+            </div>
           </div>
 
           <div class="section">
             <label class="section-label">Alignment</label>
-            <div class="alignment-buttons">
-              <button class="align-btn active" data-align="left">
+            <div class="alignment-group">
+              <button class="alignment-btn active" data-align="left" title="Align Left">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="17" y1="10" x2="3" y2="10"></line>
                   <line x1="21" y1="6" x2="3" y2="6"></line>
@@ -433,7 +443,7 @@
                   <line x1="17" y1="18" x2="3" y2="18"></line>
                 </svg>
               </button>
-              <button class="align-btn" data-align="center">
+              <button class="alignment-btn" data-align="center" title="Align Center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="10" x2="6" y2="10"></line>
                   <line x1="21" y1="6" x2="3" y2="6"></line>
@@ -441,7 +451,7 @@
                   <line x1="18" y1="18" x2="6" y2="18"></line>
                 </svg>
               </button>
-              <button class="align-btn" data-align="right">
+              <button class="alignment-btn" data-align="right" title="Align Right">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="21" y1="10" x2="7" y2="10"></line>
                   <line x1="21" y1="6" x2="3" y2="6"></line>
@@ -449,7 +459,7 @@
                   <line x1="21" y1="18" x2="7" y2="18"></line>
                 </svg>
               </button>
-              <button class="align-btn" data-align="justify">
+              <button class="alignment-btn" data-align="justify" title="Justify">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="21" y1="10" x2="3" y2="10"></line>
                   <line x1="21" y1="6" x2="3" y2="6"></line>
@@ -461,50 +471,71 @@
           </div>
 
           <div class="section">
-            <label class="input-label">Line Height: <span id="lineHeightValue">1.2</span></label>
-            <input id="lineHeightInput" type="range" min="0.8" max="2.5" step="0.1" value="1.2" class="slider" />
+            <label class="section-label">Colors</label>
+            <div class="color-grid">
+              <div class="color-input-group">
+                <label class="input-label">Text</label>
+                <input id="textColorInput" type="color" value="#000000" />
+              </div>
+              <div class="color-input-group">
+                <label class="input-label">Stroke</label>
+                <input id="strokeColorInput" type="color" value="#ffffff" />
+              </div>
+            </div>
           </div>
 
-          <div class="section">
-            <label class="input-label">Letter Spacing: <span id="letterSpacingValue">0</span>px</label>
-            <input id="letterSpacingInput" type="range" min="-5" max="20" value="0" class="slider" />
+          <div class="section two-col">
+            <div>
+              <label class="input-label">Stroke Width</label>
+              <input id="strokeWidthInput" type="number" min="0" max="20" step="0.5" value="0" />
+            </div>
+            <div>
+              <label class="input-label">Rotation</label>
+              <input id="rotateInput" type="number" min="0" max="360" value="0" />
+            </div>
           </div>
 
-          <div class="section" style="padding-top:12px;border-top:1px solid #3e3e42;">
-            <button id="duplicateTextBtn" class="secondary-btn" style="width:100%;margin-bottom:8px" disabled>
-              Duplicate Text
-            </button>
-            <button id="deleteTextBtn" class="danger-btn" style="width:100%" disabled>
-              Delete Text
-            </button>
+          <div class="section button-row">
+            <button id="duplicateText" class="secondary-btn">Duplicate</button>
+            <button id="deleteTextBtn" class="danger-btn">Delete</button>
+          </div>
+      
+      <div class="section">
+            <p style="color: #999; font-size: 12px; line-height: 1.5;">
+              The text tool lets you add editable text boxes to your image. Customize the font, size, colors, and styling. Drag top left corner to move, use handles to resize, and the top center handle to rotate.
+            </p>
           </div>
         </div>
-
+      
         <!-- LAYERS TAB -->
         <div class="tab-content" id="layersTab">
           <div class="section">
-            <h4 style="margin-bottom:12px;font-size:14px;">Visibility</h4>
-            <label style="display:flex;align-items:center;margin-bottom:12px;cursor:pointer;">
-              <input id="toggleTextLayer" type="checkbox" checked style="margin-right:10px" />
-              <span style="font-size:14px;">Text Layer</span>
+            <label class="checkbox-label layer-toggle">
+              <input id="showTextLayer" type="checkbox" checked />
+              <span>Show Text Layer</span>
             </label>
-            <label style="display:flex;align-items:center;cursor:pointer;">
-              <input id="toggleEditLayer" type="checkbox" checked style="margin-right:10px" />
-              <span style="font-size:14px;">Edit Layer (Brush/Eraser)</span>
+            <label class="checkbox-label layer-toggle">
+              <input id="showEditLayer" type="checkbox" checked />
+              <span>Show Edit Layer</span>
             </label>
           </div>
+      <div class="section">
+            <p style="color: #999; font-size: 12px; line-height: 1.5;">
+              Control the visibility of different editing layers. You are able to toggle text boxes and brush edits on or off.
+            </p>
+          </div>
           
-          <div class="section">
-            <h4 style="margin-bottom:8px;font-size:14px;">Export Settings</h4>
+          <div class="section" style="border-top: 1px solid #3e3e42; padding-top: 16px; margin-top: 16px;">
+            <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #e0e0e0;">Export Settings</h4>
             
-            <label class="section-label">Format</label>
-            <div class="format-buttons">
-              <button class="format-btn active" data-format="webp">WebP</button>
-              <button class="format-btn" data-format="png">PNG</button>
-            </div>
+            <label class="input-label">Format</label>
+            <select id="exportFormatSelect" class="select-input" style="margin-bottom: 12px;">
+              <option value="webp">WebP (Smaller files, 40-60% reduction)</option>
+              <option value="png">PNG (Larger files, lossless)</option>
+            </select>
             
-            <div id="webpWarning" style="display:none;margin-top:8px;padding:8px;background:#3e2a2a;border:1px solid #5a3a3a;border-radius:4px;">
-              <p style="color: #ff9999; font-size: 11px; line-height: 1.4;">
+            <div id="webpStatusMessage" style="display: none; padding: 8px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 4px; margin-bottom: 12px;">
+              <p style="color: #ffc107; font-size: 11px; margin: 0;">
                 ⚠️ WebP detection failed. If you're on Chrome/Safari/Firefox, you can still try selecting WebP - it may work!
               </p>
             </div>
@@ -686,8 +717,9 @@
         </div>
       </div>
     </div>
+
+    <script src="script.js"></script>
   </div>
 
-  <script src="script.js"></script>
 </body>
 </html>

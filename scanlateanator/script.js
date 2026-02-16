@@ -1,8 +1,9 @@
-
+/* ===================================
+   CONFIGURATION & CONSTANTS
+   =================================== */
 
 let supportsWebP = false;
 let webpBlobSupport = false;
-
 
 const detectWebPSupportAsync = async () => {
   return new Promise((resolve) => {
@@ -13,7 +14,6 @@ const detectWebPSupportAsync = async () => {
     img.src = webpData;
   });
 };
-
 
 let webpDetectionComplete = false;
 const ensureWebPDetection = async () => {
@@ -52,13 +52,13 @@ const CONFIG = {
   STROKE_QUALITY: 8,
   MIN_TEXT_WIDTH: 60,
   MIN_TEXT_HEIGHT: 30,
-
-  REGION_PADDING: 10,
-  USE_WEBP: true,
-  BLOB_QUALITY: 0.85,
+  // Optimization settings
+  REGION_PADDING: 10,        
+  USE_WEBP: true,            
+  BLOB_QUALITY: 0.85,        
   MIN_REGION_SIZE: 50,
-
-  EXPORT_FORMAT: supportsWebP ? 'webp' : 'png',  // Auto-detect, fallba
+  // Export settings
+  EXPORT_FORMAT: supportsWebP ? 'webp' : 'png', 
   EXPORT_QUALITY: 0.92
 };
 
@@ -72,7 +72,9 @@ const ACTION_LABELS = {
   'text-duplicate': 'Duplicate Text'
 };
 
-
+/* ===================================
+   DOM HELPERS & GLOBALS
+   =================================== */
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
@@ -104,7 +106,7 @@ const state = {
   currentPageIndex: 0,
   currentStrokePoints: [],
   textAlign: "left",
-
+  // Zoom and pan state
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -113,7 +115,9 @@ const state = {
   panStartY: 0
 };
 
-
+/* ===================================
+   UTILITY FUNCTIONS
+   =================================== */
 const debounce = (fn, delay) => {
   let timeout;
   return (...args) => {
@@ -130,7 +134,9 @@ const enableTools = (enabled) => {
   });
 };
 
-
+/* ===================================
+   PROGRESS TRACKING UTILITIES
+   =================================== */
 let currentProgress = 0;
 
 const updateProgress = (target, total, message = '') => {
@@ -162,7 +168,7 @@ const showLoading = async (message = 'Processing image and text layers') => {
   loadingOverlay.style.display = 'flex';
   currentProgress = 0;
   updateProgress(0, 100, message);
-
+  // Small delay to ensure overlay is visible before starting progress
   await new Promise(resolve => setTimeout(resolve, 100));
 };
 
@@ -172,15 +178,14 @@ const hideLoading = () => {
   updateProgress(0, 100);
 };
 
-
-
-
+/**
+ * Calculate bounding box of non-transparent pixels in a region
+ */
 const getRegionBounds = (imageData, padding = CONFIG.REGION_PADDING) => {
   const { data, width, height } = imageData;
   let minX = width, minY = height, maxX = 0, maxY = 0;
   let hasContent = false;
   
-
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const alpha = data[(y * width + x) * 4 + 3];
@@ -195,7 +200,6 @@ const getRegionBounds = (imageData, padding = CONFIG.REGION_PADDING) => {
   }
   
   if (!hasContent) return null;
-  
 
   return {
     x: Math.max(0, minX - padding),
@@ -205,7 +209,9 @@ const getRegionBounds = (imageData, padding = CONFIG.REGION_PADDING) => {
   };
 };
 
-
+/**
+ * Calculate bounding box from stroke points (more efficient for brush/eraser)
+ */
 const getStrokeBounds = (points, size, padding = CONFIG.REGION_PADDING) => {
   if (points.length === 0) return null;
   
@@ -226,16 +232,18 @@ const getStrokeBounds = (points, size, padding = CONFIG.REGION_PADDING) => {
   };
 };
 
-
+/**
+ * Compress region data to blob for storage
+ */
 const compressRegionToBlob = async (imageData) => {
-
+  // Create temporary canvas for the region
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = imageData.width;
   tempCanvas.height = imageData.height;
   const tempCtx = tempCanvas.getContext('2d');
   tempCtx.putImageData(imageData, 0, 0);
   
-
+  // Convert to blob with compression
   return new Promise(resolve => {
     tempCanvas.toBlob(resolve, 
       CONFIG.USE_WEBP ? 'image/webp' : 'image/png', 
@@ -244,11 +252,12 @@ const compressRegionToBlob = async (imageData) => {
   });
 };
 
-
+/**
+ * Save the current state to undo history (OPTIMIZED VERSION)
+ */
 const saveState = async (action) => {
   console.log(`Saving state: ${action}, stack length before: ${state.undoStack.length}`);
   
-
   const textBoxesData = Array.from(textBoxes).map(box => ({
     id: box.dataset.id,
     left: parseFloat(box.style.left),
@@ -272,16 +281,14 @@ const saveState = async (action) => {
   let editCanvasData = null;
   let regionBounds = null;
   
-
-
   if (action === 'brush' && state.currentStrokePoints.length > 0) {
     const size = state.brushSize;
     regionBounds = getStrokeBounds(state.currentStrokePoints, size);
   }
   
-
+  // If we have a valid region bounds, store only that region
   if (regionBounds && regionBounds.width > 0 && regionBounds.height > 0) {
-
+    // Extract only the affected region
     const regionData = ctxEdit.getImageData(
       regionBounds.x, 
       regionBounds.y, 
@@ -289,7 +296,6 @@ const saveState = async (action) => {
       regionBounds.height
     );
     
-
     editCanvasData = {
       type: 'region',
       bounds: regionBounds,
@@ -298,7 +304,6 @@ const saveState = async (action) => {
     
     console.log(`  Optimized: Storing region ${regionBounds.width}x${regionBounds.height} instead of full ${editCanvas.width}x${editCanvas.height}`);
   } else {
-
     editCanvasData = {
       type: 'full',
       blob: await new Promise(resolve => {
@@ -311,7 +316,6 @@ const saveState = async (action) => {
     
     console.log(`  Storing full canvas (action: ${action})`);
   }
-  
 
   const stateEntry = {
     action,
@@ -319,22 +323,17 @@ const saveState = async (action) => {
     editCanvasData,
     textBoxes: textBoxesData
   };
-  
 
   state.undoStack.push(stateEntry);
   
   console.log(`Stack length after: ${state.undoStack.length}, actions: [${state.undoStack.map(s => s.action).join(', ')}]`);
   
-
   if (state.undoStack.length > CONFIG.MAX_UNDO_STEPS) {
     const removed = state.undoStack.shift();
-
     if (removed.editCanvasData?.blob) {
       URL.revokeObjectURL(removed.editCanvasData.blob);
     }
   }
-  
-
 
   state.redoStack.forEach(entry => {
     if (entry.editCanvasData?.blob) {
@@ -343,7 +342,6 @@ const saveState = async (action) => {
   });
   state.redoStack = [];
   
-
   if (state.pages.length > 0 && state.pages[state.currentPageIndex]) {
     state.pages[state.currentPageIndex].undoStack = [...state.undoStack];
     state.pages[state.currentPageIndex].redoStack = [...state.redoStack];
@@ -353,16 +351,18 @@ const saveState = async (action) => {
   updateHistoryLog();
 };
 
-
+/**
+ * Restore a state snapshot (OPTIMIZED VERSION)
+ * Properly reconstructs canvas by replaying all states up to target
+ */
 const restoreState = async (stateEntry) => {
   if (!stateEntry) return;
   
   console.log(`RESTORE: Restoring action: ${stateEntry.action}`);
   
-
+  // Clear canvas completely
   ctxEdit.clearRect(0, 0, editCanvas.width, editCanvas.height);
   
-
   const targetIndex = state.undoStack.indexOf(stateEntry);
   
   if (targetIndex === -1) {
@@ -370,9 +370,6 @@ const restoreState = async (stateEntry) => {
     return;
   }
   
-
-
-
   ctxEdit.globalCompositeOperation = 'source-over';
   
   for (let i = 0; i <= targetIndex; i++) {
@@ -383,13 +380,11 @@ const restoreState = async (stateEntry) => {
       const img = await createImageBitmap(canvasData.blob);
       
       if (canvasData.type === 'region' && canvasData.bounds) {
-
-
         ctxEdit.drawImage(img, canvasData.bounds.x, canvasData.bounds.y);
         
         console.log(`  Applied ${currentState.action} region at (${canvasData.bounds.x}, ${canvasData.bounds.y})`);
       } else {
-
+        // Full canvas state
         ctxEdit.clearRect(0, 0, editCanvas.width, editCanvas.height);
         ctxEdit.drawImage(img, 0, 0);
         
@@ -400,7 +395,7 @@ const restoreState = async (stateEntry) => {
   
   console.log(`RESTORE: Replayed ${targetIndex + 1} states`);
   
-
+  // Clear and restore text boxes from the target state
   textBoxes.forEach(box => box.remove());
   textBoxes.clear();
   state.currentTextBox = null;
@@ -410,17 +405,16 @@ const restoreState = async (stateEntry) => {
   }
 };
 
-
+/**
+ * Undo last action
+ */
 const undo = async () => {
-
   if (state.undoStack.length <= 1) return;
   
   console.log(`UNDO: Before - undoStack length: ${state.undoStack.length}, actions: [${state.undoStack.map(s => s.action).join(', ')}]`);
-  
 
   const currentState = state.undoStack.pop();
   state.redoStack.push(currentState);
-  
 
   const previousState = state.undoStack[state.undoStack.length - 1];
   console.log(`UNDO: Restoring state with action: ${previousState.action}, blob size: ${previousState.editCanvasBlob?.size || 'none'}`);
@@ -428,7 +422,6 @@ const undo = async () => {
   await restoreState(previousState);
   
   console.log(`UNDO: After - undoStack length: ${state.undoStack.length}, actions: [${state.undoStack.map(s => s.action).join(', ')}]`);
-  
 
   if (state.pages.length > 0 && state.pages[state.currentPageIndex]) {
     state.pages[state.currentPageIndex].undoStack = [...state.undoStack];
@@ -439,17 +432,16 @@ const undo = async () => {
   updateHistoryLog();
 };
 
-
+/**
+ * Redo previously undone action
+ */
 const redo = async () => {
   if (state.redoStack.length === 0) return;
   
-
   const nextState = state.redoStack.pop();
   state.undoStack.push(nextState);
-  
 
   await restoreState(nextState);
-  
 
   if (state.pages.length > 0 && state.pages[state.currentPageIndex]) {
     state.pages[state.currentPageIndex].undoStack = [...state.undoStack];
@@ -460,13 +452,17 @@ const redo = async () => {
   updateHistoryLog();
 };
 
-
+/**
+ * Update undo/redo button states
+ */
 const updateUndoRedoButtons = () => {
   $("undoBtn").disabled = state.undoStack.length <= 1;
   $("redoBtn").disabled = state.redoStack.length === 0;
 };
 
-
+/**
+ * Update history log display
+ */
 const updateHistoryLog = () => {
   const log = $("historyLog");
   const items = [...state.undoStack].reverse();
@@ -481,35 +477,31 @@ const updateHistoryLog = () => {
     : '<div style="color: #999; font-size: 11px; padding: 8px;">No history yet</div>';
 };
 
-
+/**
+ * Click handler for history items - jump to that state
+ */
 $("historyLog").addEventListener('click', async e => {
   const item = e.target.closest('.history-item');
   if (!item) return;
   
   const clickedIndex = parseInt(item.dataset.index);
   
-
   if (clickedIndex === 0) return;
-  
-
-
-  
-
 
   const reversedStack = [...state.undoStack].reverse();
   const targetStateIndex = state.undoStack.length - 1 - clickedIndex;
   
-
+  // Remove all states after the target
   state.undoStack = state.undoStack.slice(0, targetStateIndex + 1);
   
-
+  // Clear redo stack
   state.redoStack = [];
   
-
+  // Restore the target state
   const targetState = state.undoStack[state.undoStack.length - 1];
   await restoreState(targetState);
   
-
+  // Sync with page state
   if (state.pages.length > 0 && state.pages[state.currentPageIndex]) {
     state.pages[state.currentPageIndex].undoStack = [...state.undoStack];
     state.pages[state.currentPageIndex].redoStack = [...state.redoStack];
@@ -519,29 +511,27 @@ $("historyLog").addEventListener('click', async e => {
   updateHistoryLog();
 });
 
+/* ===================================
+   ZOOM AND PAN CONTROLS
+   =================================== */
 
-
-
+/**
+ * Update canvas transform based on zoom and pan state
+ */
 const updateCanvasTransform = () => {
-
   const transformedWidth = editCanvas.width * state.zoom;
   const transformedHeight = editCanvas.height * state.zoom;
   
-
   const viewportWidth = centerArea.clientWidth;
   const viewportHeight = centerArea.clientHeight;
   
-
   const centerOffsetX = (viewportWidth - transformedWidth) / 2;
   const centerOffsetY = (viewportHeight - transformedHeight) / 2;
   
-
   const transform = `translate(${centerOffsetX + state.panX}px, ${centerOffsetY + state.panY}px) scale(${state.zoom})`;
   canvasWrapper.style.transform = transform;
   canvasWrapper.style.transformOrigin = '0 0';
   
-
-
   const containerWidth = Math.max(transformedWidth, viewportWidth);
   const containerHeight = Math.max(transformedHeight, viewportHeight);
   
@@ -549,7 +539,9 @@ const updateCanvasTransform = () => {
   canvasContainer.style.height = containerHeight + 'px';
 };
 
-
+/**
+ * Get mouse position in canvas coordinates (accounting for zoom/pan)
+ */
 const getCanvasCoordinates = (clientX, clientY) => {
   const rect = editCanvas.getBoundingClientRect();
   const x = (clientX - rect.left) / state.zoom;
@@ -557,44 +549,42 @@ const getCanvasCoordinates = (clientX, clientY) => {
   return { x, y };
 };
 
-
+/**
+ * Zoom in/out with Ctrl + mouse wheel
+ */
 const centerArea = $('centerArea');
 
 centerArea.addEventListener('wheel', (e) => {
   if (!state.imageLoaded) return;
   
-
+  // Only zoom if Ctrl key is held, otherwise allow normal scrolling
   if (!e.ctrlKey && !e.metaKey) return;
   
   e.preventDefault();
   
-
+  // Get mouse position
   const rect = centerArea.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
   
-
+  // Calculate current center offsets
   const oldTransformedWidth = editCanvas.width * state.zoom;
   const oldTransformedHeight = editCanvas.height * state.zoom;
   const oldCenterX = (rect.width - oldTransformedWidth) / 2 + state.panX;
   const oldCenterY = (rect.height - oldTransformedHeight) / 2 + state.panY;
   
-
   const mouseDeltaX = mouseX - oldCenterX;
   const mouseDeltaY = mouseY - oldCenterY;
   
-
   const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
   const oldZoom = state.zoom;
   const newZoom = Math.max(0.1, Math.min(5, state.zoom * zoomDelta));
   
-
   const newTransformedWidth = editCanvas.width * newZoom;
   const newTransformedHeight = editCanvas.height * newZoom;
   const newCenterX = (rect.width - newTransformedWidth) / 2;
   const newCenterY = (rect.height - newTransformedHeight) / 2;
   
-
   const zoomRatio = newZoom / oldZoom;
   state.panX = mouseX - newCenterX - mouseDeltaX * zoomRatio;
   state.panY = mouseY - newCenterY - mouseDeltaY * zoomRatio;
@@ -602,16 +592,17 @@ centerArea.addEventListener('wheel', (e) => {
   state.zoom = newZoom;
   updateCanvasTransform();
   
-
   updateZoomDisplay();
 }, { passive: false });
 
-
+/**
+ * Pan with spacebar + drag or middle mouse button
+ */
 let spacebarPressed = false;
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Space' && !e.repeat && state.imageLoaded) {
-
+    // Don't activate if typing in text box
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
       return;
     }
@@ -626,7 +617,7 @@ document.addEventListener('keyup', (e) => {
     spacebarPressed = false;
     if (!state.isPanning) {
       centerArea.style.cursor = '';
-
+      // Restore tool cursor
       if (state.tool === 'brush' || state.tool === 'eraser') {
         editCanvas.style.cursor = 'none';
       } else if (state.tool === 'text') {
@@ -639,7 +630,6 @@ document.addEventListener('keyup', (e) => {
 centerArea.addEventListener('mousedown', (e) => {
   if (!state.imageLoaded) return;
   
-
   if (e.button === 1 || (spacebarPressed && e.button === 0)) {
     e.preventDefault();
     state.isPanning = true;
@@ -661,8 +651,7 @@ centerArea.addEventListener('mouseup', (e) => {
   if (state.isPanning && (e.button === 1 || e.button === 0)) {
     state.isPanning = false;
     centerArea.style.cursor = spacebarPressed ? 'grab' : '';
-    
-
+	
     if (!spacebarPressed) {
       if (state.tool === 'brush' || state.tool === 'eraser') {
         editCanvas.style.cursor = 'none';
@@ -673,14 +662,15 @@ centerArea.addEventListener('mouseup', (e) => {
   }
 });
 
-
 centerArea.addEventListener('auxclick', (e) => {
   if (e.button === 1) {
     e.preventDefault();
   }
 });
 
-
+/**
+ * Reset zoom to 100%
+ */
 const resetZoom = () => {
   state.zoom = 1;
   state.panX = 0;
@@ -689,19 +679,21 @@ const resetZoom = () => {
   updateZoomDisplay();
 };
 
-
+/**
+ * Zoom to fit canvas in viewport
+ */
 const zoomToFit = () => {
   if (!state.imageLoaded) return;
   
   const container = centerArea;
-  const containerWidth = container.clientWidth - 40;
+  const containerWidth = container.clientWidth - 40; // padding
   const containerHeight = container.clientHeight - 40;
   
   const scaleX = containerWidth / editCanvas.width;
   const scaleY = containerHeight / editCanvas.height;
   
   state.zoom = Math.min(scaleX, scaleY, 1);
-
+  // Reset pan to 0 and let updateCanvasTransform handle centering automatically
   state.panX = 0;
   state.panY = 0;
   
@@ -709,7 +701,9 @@ const zoomToFit = () => {
   updateZoomDisplay();
 };
 
-
+/**
+ * Update zoom percentage display
+ */
 const updateZoomDisplay = () => {
   const zoomPercent = Math.round(state.zoom * 100);
   const display = $('zoomDisplay');
@@ -718,7 +712,9 @@ const updateZoomDisplay = () => {
   }
 };
 
-
+/**
+ * Zoom button event listeners
+ */
 $('zoomInBtn').addEventListener('click', () => {
   if (!state.imageLoaded) return;
   state.zoom = Math.min(5, state.zoom * 1.2);
@@ -736,16 +732,16 @@ $('zoomOutBtn').addEventListener('click', () => {
 $('zoomResetBtn').addEventListener('click', resetZoom);
 $('zoomFitBtn').addEventListener('click', zoomToFit);
 
-
+/**
+ * Keyboard shortcuts for zoom
+ */
 document.addEventListener('keydown', (e) => {
-
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
     return;
   }
   
   if (!state.imageLoaded) return;
   
-
   if (e.key === '+' || e.key === '=') {
     e.preventDefault();
     state.zoom = Math.min(5, state.zoom * 1.2);
@@ -753,14 +749,12 @@ document.addEventListener('keydown', (e) => {
     updateZoomDisplay();
   }
   
-
   if (e.key === '-' || e.key === '_') {
     e.preventDefault();
     state.zoom = Math.max(0.1, state.zoom / 1.2);
     updateCanvasTransform();
     updateZoomDisplay();
   }
-  
 
   if (e.key === '0') {
     e.preventDefault();
@@ -768,7 +762,9 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-
+/* ===================================
+   TAB SWITCHING
+   =================================== */
 const switchToTab = tabName => {
   $$('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
   $$('.tab-content').forEach(content => content.classList.toggle('active', content.id === tabName + 'Tab'));
@@ -788,7 +784,9 @@ $$('.tab-btn').forEach(btn => {
     }
   });
 });
-
+/* ===================================
+   IMAGE UPLOAD
+   =================================== */
 $("uploadBtn").addEventListener('click', () => $("fileInput").click());
 
 $("fileInput").addEventListener('change', e => {
@@ -801,7 +799,6 @@ $("fileInput").addEventListener('change', e => {
   
   const img = new Image();
   img.onload = () => {
-
     const MAX_DIMENSION = 4096;
     let width = img.width;
     let height = img.height;
@@ -855,7 +852,6 @@ $("fileInput").addEventListener('change', e => {
     enableTools(true);
     updatePageControls();
     
-
     setTimeout(() => {
       zoomToFit();
     }, 50);
@@ -868,7 +864,9 @@ $("fileInput").addEventListener('change', e => {
   img.src = state.currentImageURL;
 });
 
-
+/* ===================================
+   BRUSH/ERASER TOOLS
+   =================================== */
 const setTool = (tool, skipTabSwitch = false) => {
   state.tool = tool;
   ['brushBtn', 'eraserBtn', 'textBtn'].forEach(id => {
@@ -907,7 +905,7 @@ $("eraserBtn").addEventListener('click', () => {
 const updateBrushCursor = () => {
   const size = state.tool === "eraser" ? state.eraserSize : state.brushSize;
   const cursor = $("brushCursor");
-
+  // Scale cursor with zoom
   cursor.style.width = cursor.style.height = (size * state.zoom) + "px";
 };
 
@@ -995,13 +993,15 @@ editCanvas.addEventListener('mousemove', e => {
   if (state.tool === "brush" || state.tool === "eraser") {
     const cursor = $("brushCursor");
     
-
+    // With position: fixed, use clientX/clientY directly (viewport coordinates)
     cursor.style.left = e.clientX + "px";
     cursor.style.top = e.clientY + "px";
   }
 });
 
-
+/* ===================================
+   TEXT TOOL - HELPER FUNCTIONS
+   =================================== */
 const applyFontStyle = box => {
   box.style.fontWeight = box._bold ? "bold" : "normal";
   box.style.fontStyle = box._italic ? "italic" : "normal";
@@ -1056,7 +1056,6 @@ const setCurrentTextBox = (box, updateSidebar = true) => {
     $("boldCheck").checked = box._bold || false;
     $("italicCheck").checked = box._italic || false;
     
-
     const align = box._textAlign || "left";
     state.textAlign = align;
     $$('.alignment-btn').forEach(btn => {
@@ -1065,7 +1064,9 @@ const setCurrentTextBox = (box, updateSidebar = true) => {
   }
 };
 
-
+/* ===================================
+   TEXT TOOL - CREATE TEXT BOX
+   =================================== */
 const activateTextTool = () => {
   state.tool = "text";
   ['brushBtn', 'eraserBtn', 'textBtn'].forEach(id => {
@@ -1254,7 +1255,9 @@ const setupTextBoxInteraction = (box) => {
   });
 };
 
-
+/* ===================================
+   TEXT SIDEBAR CONTROLS
+   =================================== */
 const debouncedTextModify = debounce(() => saveState('text-modify'), CONFIG.TEXT_MODIFY_DEBOUNCE);
 
 $("textInput").addEventListener('input', () => {
@@ -1264,7 +1267,6 @@ $("textInput").addEventListener('input', () => {
   state.currentTextBox.classList.add("selected");
   debouncedTextModify();
 });
-
 
 $$('.alignment-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1286,6 +1288,7 @@ $$('.alignment-btn').forEach(btn => {
   });
 });
 
+// omg i hate this
 const textControls = [
   ['fontSizeInput', (v, box) => { box.style.fontSize = v + "px"; }],
   ['fontFamilySel', (v, box) => { box.style.fontFamily = v; }],
@@ -1358,7 +1361,9 @@ $("duplicateText").addEventListener('click', () => {
   saveState('text-duplicate');
 });
 
-
+/* ===================================
+   LAYERS
+   =================================== */
 $("showTextLayer").addEventListener('change', () => {
   const visible = $("showTextLayer").checked;
   textBoxes.forEach(box => {
@@ -1370,7 +1375,9 @@ $("showEditLayer").addEventListener('change', () => {
   editCanvas.style.display = $("showEditLayer").checked ? "block" : "none";
 });
 
-
+/* ===================================
+   EXPORT SETTINGS
+   =================================== */
 $("exportFormatSelect").addEventListener('change', (e) => {
   CONFIG.EXPORT_FORMAT = e.target.value;
   console.log('Export format set to:', CONFIG.EXPORT_FORMAT);
@@ -1382,14 +1389,18 @@ $("exportQualitySlider").addEventListener('input', (e) => {
   $("exportQualityValue").textContent = quality;
 });
 
-
+/* ===================================
+   DESELECT
+   =================================== */
 canvasWrapper.addEventListener('click', e => {
   if ([canvasWrapper, imageCanvas, editCanvas].includes(e.target)) {
     setCurrentTextBox(null);
   }
 });
 
-
+/* ===================================
+   KEYBOARD SHORTCUTS
+   =================================== */
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
@@ -1405,13 +1416,15 @@ document.addEventListener('keydown', e => {
 $("undoBtn").addEventListener('click', undo);
 $("redoBtn").addEventListener('click', redo);
 
-
+/* ===================================
+   EXPORT
+   =================================== */
 $("exportBtn").addEventListener('click', (e) => {
   e.stopPropagation();
   $('exportBtn').parentElement.classList.toggle('open');
 });
 
-
+// Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
   const dropdown = document.querySelector('.export-dropdown');
   if (dropdown && !dropdown.contains(e.target)) {
@@ -1425,7 +1438,6 @@ $("exportCurrentBtn").addEventListener('click', async () => {
   
   await showLoading('Preparing export...');
   
-
   await ensureWebPDetection();
   
   await animateProgress(0, 20, 200, 'Preparing export...');
@@ -1433,12 +1445,10 @@ $("exportCurrentBtn").addEventListener('click', async () => {
   const currentPage = state.pages[state.currentPageIndex];
   
   await animateProgress(20, 50, 300, 'Rendering image layers...');
-  
 
   await new Promise(resolve => setTimeout(resolve, 100));
   
   await animateProgress(50, 80, 300, 'Processing text and effects...');
-  
 
   exportSinglePage(currentPage, `scanlate-page-${state.currentPageIndex + 1}.png`);
   
@@ -1454,7 +1464,6 @@ $("exportAllBtn").addEventListener('click', async () => {
   
   const pageCount = state.pages.length;
   
-
   await ensureWebPDetection();
   
   if (pageCount === 1) {
@@ -1485,9 +1494,8 @@ const exportSinglePage = (page, filename) => {
   const tmp = document.createElement("canvas");
   tmp.width = page.width;
   tmp.height = page.height;
-  const ctx = tmp.getContext("2d", { alpha: false }); // Disable
+  const ctx = tmp.getContext("2d", { alpha: false });
   
-
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, page.width, page.height);
   
@@ -1513,15 +1521,13 @@ const exportSinglePage = (page, filename) => {
     const fontWeight = bold ? "bold " : "";
     ctx.font = `${fontStyle}${fontWeight}${fontSize}px ${fontFamily}`;
     
-
     const align = textAlign || "left";
-    ctx.textAlign = align === "justify" ? "left" : align; // Justify uses left a
+    ctx.textAlign = align === "justify" ? "left" : align;
     ctx.textBaseline = "alphabetic";
     
     const lineHeightPx = lineHeight * fontSize;
     const maxWidth = width - 12;
     let y = -height/2 + 6 + fontSize * 0.8;
-    
 
     let x;
     if (align === "left" || align === "justify") {
@@ -1544,9 +1550,9 @@ const exportSinglePage = (page, filename) => {
       words.forEach((word, wIndex) => {
         const testLine = currentLine + (currentLine ? ' ' : '') + word;
         if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-
+          // Render current line
           if (align === "justify" && wIndex < words.length - 1) {
-
+            // Justify text by spacing words evenly
             const lineWords = currentLine.split(' ');
             if (lineWords.length > 1) {
               const lineWidth = lineWords.reduce((sum, w) => sum + ctx.measureText(w).width, 0);
@@ -1580,13 +1586,11 @@ const exportSinglePage = (page, filename) => {
     ctx.restore();
   });
   
-
   const format = CONFIG.EXPORT_FORMAT === 'webp' ? 'image/webp' : 'image/png';
   const quality = CONFIG.EXPORT_QUALITY;
   
   console.log('Exporting with settings:', { format, quality, filename });
   
-
   const finalFilename = filename.replace(/\.(png|jpg|jpeg|webp)$/i, '') + 
                         (format === 'image/webp' ? '.webp' : '.png');
   
@@ -1610,9 +1614,7 @@ const exportSinglePage = (page, filename) => {
 };
 
 const exportAllPages = () => {
-
   state.pages.forEach((page, index) => {
-
     if (!page.editCanvas || !page.textBoxes) {
       console.warn(`Page ${index + 1} missing data, using empty defaults`);
       page.editCanvas = page.editCanvas || ctxEdit.createImageData(page.width, page.height);
@@ -1629,12 +1631,10 @@ const exportAllPages = () => {
 
 const exportAllPagesAsZip = async () => {
   const totalPages = state.pages.length;
-  
-
   if (typeof JSZip === 'undefined') {
     await animateProgress(10, 15, 500, 'Loading export library...');
     const script = document.createElement('script');
-    script.src = 'https://cdnjs.clo
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
     document.head.appendChild(script);
     
     await new Promise((resolve, reject) => {
@@ -1649,7 +1649,7 @@ const exportAllPagesAsZip = async () => {
   
   const zip = new JSZip();
   
-
+  // fake progress lolllll
   const progressStart = 20;
   const progressEnd = 80;
   const progressPerPage = (progressEnd - progressStart) / totalPages;
@@ -1659,8 +1659,6 @@ const exportAllPagesAsZip = async () => {
     
     const pageProgressStart = progressStart + (index * progressPerPage);
     const pageProgressEnd = progressStart + ((index + 1) * progressPerPage);
-    
-
     await animateProgress(
       pageProgressStart, 
       pageProgressStart + (progressPerPage * 0.3), 
@@ -1677,9 +1675,9 @@ const exportAllPagesAsZip = async () => {
     const tmp = document.createElement("canvas");
     tmp.width = page.width;
     tmp.height = page.height;
-    const ctx = tmp.getContext("2d", { alpha: false }); // Disable
+    const ctx = tmp.getContext("2d", { alpha: false });
     
-
+    // Fill with white background first
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, page.width, page.height);
     
@@ -1775,11 +1773,9 @@ const exportAllPagesAsZip = async () => {
       ctx.restore();
     });
     
-
     const format = CONFIG.EXPORT_FORMAT === 'webp' ? 'image/webp' : 'image/png';
     const extension = format === 'image/webp' ? 'webp' : 'png';
     
-
     const imageBlob = await new Promise(resolve => {
       tmp.toBlob(resolve, format, CONFIG.EXPORT_QUALITY);
     });
@@ -1794,7 +1790,6 @@ const exportAllPagesAsZip = async () => {
     );
   }
   
-
   await animateProgress(80, 90, 300, 'Creating ZIP file...');
   
   const blob = await zip.generateAsync({
@@ -1815,7 +1810,9 @@ const exportAllPagesAsZip = async () => {
   URL.revokeObjectURL(link.href);
 };
 
-
+/* ===================================
+   MULTI-PAGE MANAGEMENT
+   =================================== */
 const saveCurrentPageState = () => {
   if (state.pages.length === 0 || !state.imageLoaded) return;
   
@@ -1874,12 +1871,13 @@ const loadPage = (pageIndex) => {
   updateHistoryLog();
   updatePageControls();
   
-
+  // I genuinely can't remember why I coded this part
+  // Center the image in the viewport
   setTimeout(() => {
     const container = $('centerArea');
     const wrapper = canvasWrapper;
     
-
+    // Calculate scroll positions to center the image
     const scrollLeft = (wrapper.offsetWidth - container.clientWidth) / 2;
     const scrollTop = (wrapper.offsetHeight - container.clientHeight) / 2;
     
@@ -1912,10 +1910,76 @@ $("addPageBtn").addEventListener('click', () => {
   
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image
+  input.accept = 'image/*';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      imageCanvas.width = editCanvas.width = img.width;
+      imageCanvas.height = editCanvas.height = img.height;
+      
+      ctxImage.drawImage(img, 0, 0);
+      
+      ctxEdit.clearRect(0, 0, img.width, img.height);
+      
+      textBoxes.forEach(box => box.remove());
+      textBoxes.clear();
+      state.currentTextBox = null;
+      
+      state.undoStack = [];
+      state.redoStack = [];
+      
+      const newPage = {
+        imageData: ctxImage.getImageData(0, 0, img.width, img.height),
+        width: img.width,
+        height: img.height,
+        undoStack: [],
+        redoStack: [],
+        editCanvas: ctxEdit.getImageData(0, 0, img.width, img.height),
+        textBoxes: []
+      };
+      
+      state.pages.push(newPage);
+      state.currentPageIndex = state.pages.length - 1;
+      
+      saveState('initial');
+      
+      updatePageControls();
+      updateUndoRedoButtons();
+      updateHistoryLog();
+      
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+  };
+  input.click();
+});
+
+$("deletePageBtn").addEventListener('click', () => {
+  if (state.pages.length <= 1) {
+    alert('Cannot delete the last page');
+    return;
+  }
+  
+  if (!confirm(`Delete Page ${state.currentPageIndex + 1}?`)) return;
+  
+  state.pages.splice(state.currentPageIndex, 1);
+  
+  if (state.currentPageIndex >= state.pages.length) {
+    state.currentPageIndex = state.pages.length - 1;
+  }
+  
+  loadPage(state.currentPageIndex);
+});
+
+/* ===================================
+   SIDEBAR COLLAPSE
+   =================================== */
 $("collapseLeftBtn").addEventListener('click', () => {
   $("leftSidebar").classList.toggle('collapsed');
-
+  // Wait for CSS transition, then recenter canvas
   if (state.imageLoaded) {
     setTimeout(() => updateCanvasTransform(), 350);
   }
@@ -1923,13 +1987,15 @@ $("collapseLeftBtn").addEventListener('click', () => {
 
 $("collapseRightBtn").addEventListener('click', () => {
   $("rightSidebar").classList.toggle('collapsed');
-
+  // Wait for CSS transition, then recenter canvas
   if (state.imageLoaded) {
     setTimeout(() => updateCanvasTransform(), 350);
   }
 });
 
-
+/* ===================================
+   CUSTOM FONT IMPORT
+   =================================== */
 const customFonts = new Set();
 
 $("importFontBtn").addEventListener('click', () => {
@@ -1940,7 +2006,7 @@ $("fontFileInput").addEventListener('change', async (e) => {
   const files = e.target.files;
   if (!files || files.length === 0) return;
   
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per font
   const ALLOWED_EXTENSIONS = /\.(ttf|otf|woff|woff2)$/i;
   const ALLOWED_MIME_TYPES = [
     'font/ttf',
@@ -1951,7 +2017,7 @@ $("fontFileInput").addEventListener('change', async (e) => {
     'application/x-font-otf',
     'application/font-woff',
     'application/font-woff2',
-    'application/octet-stream' // Fonts so
+    'application/octet-stream'
   ];
   
   let successCount = 0;
@@ -1959,33 +2025,32 @@ $("fontFileInput").addEventListener('change', async (e) => {
   
   for (const file of files) {
     try {
-
+      // 1. Check file extension
       if (!ALLOWED_EXTENSIONS.test(file.name)) {
         console.error(`Invalid file extension: ${file.name}`);
         errorCount++;
         continue;
       }
       
-
+      // 2. Check file size
       if (file.size > MAX_FILE_SIZE) {
         console.error(`File too large: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
         errorCount++;
         continue;
       }
       
-
+      // 3. Check MIME type
       if (!ALLOWED_MIME_TYPES.includes(file.type) && file.type !== '') {
         console.error(`Invalid MIME type: ${file.name} (${file.type})`);
         errorCount++;
         continue;
       }
       
-
+      // 4. Valid?
       const fontName = file.name.replace(/\.(ttf|otf|woff|woff2)$/i, '');
       const fontUrl = URL.createObjectURL(file);
       const fontFace = new FontFace(fontName, `url(${fontUrl})`);
       
-
       await fontFace.load();
       
       document.fonts.add(fontFace);
@@ -2005,7 +2070,6 @@ $("fontFileInput").addEventListener('change', async (e) => {
       
       successCount++;
       
-
       setTimeout(() => URL.revokeObjectURL(fontUrl), 60000);
       
     } catch (error) {
@@ -2014,7 +2078,6 @@ $("fontFileInput").addEventListener('change', async (e) => {
     }
   }
   
-
   if (successCount > 0) {
     showNotification(`Successfully imported ${successCount} font${successCount > 1 ? 's' : ''}!`, 'success');
   }
@@ -2026,7 +2089,7 @@ $("fontFileInput").addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
-
+// notification
 const showNotification = (message, type = 'info') => {
   const notification = document.createElement('div');
   notification.textContent = message;
@@ -2051,7 +2114,6 @@ const showNotification = (message, type = 'info') => {
     setTimeout(() => notification.remove(), 300);
   }, 3000);
 };
-
 
 if (!document.querySelector('#notificationStyles')) {
   const style = document.createElement('style');
@@ -2081,8 +2143,10 @@ if (!document.querySelector('#notificationStyles')) {
   document.head.appendChild(style);
 }
 
-
-
+/* ===================================
+   INITIALIZATION
+   =================================== */
+// Help modal
 $("helpBtn").addEventListener('click', () => {
   $("helpModal").classList.add('show');
 });
@@ -2091,13 +2155,11 @@ $("closeHelpBtn").addEventListener('click', () => {
   $("helpModal").classList.remove('show');
 });
 
-
 $("helpModal").addEventListener('click', (e) => {
   if (e.target === $("helpModal")) {
     $("helpModal").classList.remove('show');
   }
 });
-
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $("helpModal").classList.contains('show')) {
@@ -2105,14 +2167,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-
+/* ===================================
+   KEYBOARD SHORTCUTS
+   =================================== */
 document.addEventListener('keydown', async (e) => {
-
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
     await undo();
   }
-
   else if (
     ((e.ctrlKey || e.metaKey) && e.key === 'y') ||
     ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')
@@ -2122,7 +2184,6 @@ document.addEventListener('keydown', async (e) => {
   }
 });
 
-
 const initializeExportSettings = () => {
   const formatSelect = $("exportFormatSelect");
   const qualitySlider = $("exportQualitySlider");
@@ -2131,16 +2192,11 @@ const initializeExportSettings = () => {
   if (formatSelect) {
     formatSelect.value = CONFIG.EXPORT_FORMAT;
     
-
     const hasWebPSupport = supportsWebP || webpBlobSupport;
     
-
     if (!hasWebPSupport && statusMessage) {
       statusMessage.style.display = 'block';
     }
-    
-
-
   }
   
   if (qualitySlider) {
