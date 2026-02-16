@@ -124,6 +124,14 @@
       color: #666;
       font-size: 14px;
       border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .screenshot-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     .caption {
@@ -158,6 +166,60 @@
       color: #666;
       font-size: 14px;
     }
+
+    /* Image Lightbox Modal */
+    .image-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 9999;
+      padding: 20px;
+      cursor: zoom-out;
+    }
+
+    .image-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-modal img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      border-radius: 4px;
+    }
+
+    .image-modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #3e3e42;
+      color: #e0e0e0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .image-modal-close:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .screenshot-box img {
+      cursor: zoom-in;
+    }
   </style>
 </head>
 <body>
@@ -189,12 +251,12 @@
       </div>
 
       <div class="screenshot">
-        <div class="screenshot-box"><img src="assets/page-001.webp"></div>
+        <div class="screenshot-box"><img src="assets/page-001.webp" class="mobile-screenshot"></div>
         <div class="caption">Canvas with brush and text tools, layers, multi-page upload, and per-page history</div>
       </div>
 
       <div class="screenshot">
-        <div class="screenshot-box"><img src="assets/page-002.webp"></div>
+        <div class="screenshot-box"><img src="assets/page-002.webp" class="mobile-screenshot"></div>
         <div class="caption">Add and format text boxes</div>
       </div>
 
@@ -208,6 +270,12 @@
         Open this site on your computer to use the editor
       </div>
 
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imageModal" class="image-modal">
+      <button class="image-modal-close" onclick="closeMobileImageModal()">&times;</button>
+      <img id="modalImage" src="" alt="Preview">
     </div>
   </div>
 
@@ -720,6 +788,54 @@
 
     <script src="script.js"></script>
   </div>
+
+  <script>
+    // Mobile image modal functionality
+    function openMobileImageModal(imageSrc) {
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImage');
+      if (modal && modalImg) {
+        modalImg.src = imageSrc;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeMobileImageModal() {
+      const modal = document.getElementById('imageModal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+      }
+    }
+
+    // Add click listeners to mobile screenshots
+    document.addEventListener('DOMContentLoaded', function() {
+      const screenshots = document.querySelectorAll('.mobile-screenshot');
+      screenshots.forEach(function(img) {
+        img.addEventListener('click', function() {
+          openMobileImageModal(this.src);
+        });
+      });
+
+      // Close modal when clicking outside the image
+      const modal = document.getElementById('imageModal');
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            closeMobileImageModal();
+          }
+        });
+      }
+
+      // Close modal on escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeMobileImageModal();
+        }
+      });
+    });
+  </script>
 
 </body>
 </html>
